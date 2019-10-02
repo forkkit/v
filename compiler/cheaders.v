@@ -18,28 +18,41 @@ CommonCHeaders = '
 #include <unistd.h> // sleep	
 #endif
 
+
 #ifdef __APPLE__
 #include <libproc.h> // proc_pidpath
 #include <execinfo.h> // backtrace and backtrace_symbols_fd
 #endif
 
 #ifdef __linux__
+#ifndef __BIONIC__
 #include <execinfo.h> // backtrace and backtrace_symbols_fd
+#endif
 #pragma weak backtrace
 #pragma weak backtrace_symbols_fd
 #endif
+
 
 #ifdef __linux__
 #include <sys/types.h>
 #include <sys/wait.h> // os__wait uses wait on nix
 #endif
 
-
 #define EMPTY_STRUCT_DECLARATION
+#define EMPTY_STRUCT_INITIALIZATION 0
+#ifdef __TINYC__
+#undef EMPTY_STRUCT_INITIALIZATION
+#define EMPTY_STRUCT_INITIALIZATION
+#endif
+
 #define OPTION_CAST(x) (x)
 
 #ifdef _WIN32
+#define WINVER 0x0600
+#define _WIN32_WINNT 0x0600
 #define WIN32_LEAN_AND_MEAN
+#define _UNICODE
+#define UNICODE
 #include <windows.h>
 
 // must be included after <windows.h>
@@ -56,9 +69,10 @@ CommonCHeaders = '
 #define _Atomic volatile
 
 // MSVC cannot parse some things properly
-//#undef EMPTY_STRUCT_DECLARATION
-//#define EMPTY_STRUCT_DECLARATION void *____dummy_variable
+#undef EMPTY_STRUCT_DECLARATION
 #undef OPTION_CAST
+
+#define EMPTY_STRUCT_DECLARATION int ____dummy_variable
 #define OPTION_CAST(x)
 #endif
 
@@ -104,18 +118,50 @@ typedef map map_string;
 #endif
 
 //============================== HELPER C MACROS =============================*/
-
 #define _PUSH(arr, val, tmp, tmp_typ) {tmp_typ tmp = (val); array__push(arr, &tmp);}
 #define _PUSH_MANY(arr, val, tmp, tmp_typ) {tmp_typ tmp = (val); array__push_many(arr, tmp.data, tmp.len);}
 #define _IN(typ, val, arr) array_##typ##_contains(arr, val)
 #define _IN_MAP(val, m) map__exists(m, val)
-//#define ALLOC_INIT(type, ...) (type *)memdup((type[]){ __VA_ARGS__ }, sizeof(type))
-
+#define DEFAULT_EQUAL(a, b) (a == b)
+#define DEFAULT_NOT_EQUAL(a, b) (a != b)
+#define DEFAULT_LT(a, b) (a < b)
+#define DEFAULT_LE(a, b) (a <= b)
+#define DEFAULT_GT(a, b) (a > b)
+#define DEFAULT_GE(a, b) (a >= b)
 //================================== GLOBALS =================================*/
 byteptr g_str_buf;
 int load_so(byteptr);
 void reload_so();
 void init_consts();
+
+'
+
+js_headers = '
+
+var array_string = function() {}
+var array_byte = function() {}
+var array_int = function() {}
+var byte = function() {}
+var double = function() {}
+var int = function() {}
+var f64 = function() {}
+var f32 = function() {}
+var i64 = function() {}
+var i32 = function() {}
+var i16 = function() {}
+var u64 = function() {}
+var u32 = function() {}
+var u16 = function() {}
+var i8 = function() {}
+var u8 = function() {}
+var bool = function() {}
+var rune = function() {}
+var map_string = function() {}
+var map_int = function() {}
+
+function init_consts() {
+	
+}	
 
 '
 

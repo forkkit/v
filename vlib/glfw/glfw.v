@@ -4,6 +4,8 @@
 
 module glfw
 
+// note: we might need special case for this
+// see TmpGlImportHack below (joe-c)
 import gl
 
 #flag -I @VROOT/thirdparty/glfw
@@ -16,6 +18,8 @@ import gl
 #flag darwin -L/opt/local/lib
 
 #flag darwin -lglfw
+#flag freebsd -I/usr/local/include
+#flag freebsd -Wl,-L/usr/local/lib,-lglfw
 #flag linux -lglfw
 #flag windows -lglfw3
 #include <GLFW/glfw3.h>
@@ -40,6 +44,11 @@ const (
 	KeyRight = 262
 	KeyDown  = 264
 )
+
+// joe-c: fix & remove
+struct TmpGlImportHack {
+	hack gl.TmpGlImportHack
+}
 
 struct WinCfg {
 	width      int
@@ -115,7 +124,7 @@ pub fn create_window(c WinCfg) &Window {
 		println('failed to create a glfw window, make sure you have a GPU driver installed')
 		C.glfwTerminate()
 	}
-	C.printf('create window wnd=%p ptr==%p\n', cwindow, c.ptr)
+	println('create window wnd=$cwindow ptr==$c.ptr')
 	C.glfwSetWindowUserPointer(cwindow, c.ptr)
 	window := &Window {
 		data: cwindow,

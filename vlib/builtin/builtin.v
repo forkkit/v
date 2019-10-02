@@ -4,6 +4,12 @@
 
 module builtin
 
+fn C.memcpy(byteptr, byteptr, int)
+fn C.memmove(byteptr, byteptr, int)
+//fn C.malloc(int) byteptr
+fn C.realloc(byteptr, int) byteptr
+
+
 pub fn exit(code int) {
 	C.exit(code)
 }
@@ -17,22 +23,27 @@ fn on_panic(f fn (int) int) {
 	// TODO
 }
 
+fn C.backtrace(voidptr, int) int
+
 pub fn print_backtrace_skipping_top_frames(skipframes int) {
 	$if mac {
 		buffer := [100]byteptr
-		nr_ptrs := C.backtrace(buffer, 100)
-		C.backtrace_symbols_fd(&buffer[skipframes], nr_ptrs-skipframes, 1)
+		nr_ptrs := C.backtrace(*voidptr(buffer), 100)
+		C.backtrace_symbols_fd(*voidptr(&buffer[skipframes]), nr_ptrs-skipframes, 1)
 		return
 	}
 	$if linux {
-		if C.backtrace_symbols_fd != 0 {
-			buffer := [100]byteptr
-			nr_ptrs := C.backtrace(buffer, 100)
-			C.backtrace_symbols_fd(&buffer[skipframes], nr_ptrs-skipframes, 1)
-			return
-		}else{
-			C.printf('backtrace_symbols_fd is missing, so printing backtraces is not available.\n')
-			C.printf('Some libc implementations like musl simply do not provide it.\n')
+		$if !android {
+			// backtrace is not available on Android.
+			if C.backtrace_symbols_fd != 0 {
+				buffer := [100]byteptr
+				nr_ptrs := C.backtrace(*voidptr(buffer), 100)
+				C.backtrace_symbols_fd(*voidptr(&buffer[skipframes]), nr_ptrs-skipframes, 1)
+				return
+			}else{
+				C.printf('backtrace_symbols_fd is missing, so printing backtraces is not available.\n')
+				C.printf('Some libc implementations like musl simply do not provide it.\n')
+			}
 		}
 	}
 	println('print_backtrace_skipping_top_frames is not implemented on this platform for now...\n')
@@ -80,14 +91,19 @@ pub fn println(s string) {
 pub fn eprintln(s string) {
 	if isnil(s.str) {
 		panic('eprintln(NIL)')
-	}
+	}  
 	$if mac {
 		C.fprintf(stderr, '%.*s\n', s.len, s.str)
-	}
+		C.fflush(stderr)
+		return 
+	} 
+	$if linux {
+		C.fprintf(stderr, '%.*s\n', s.len, s.str)
+		C.fflush(stderr)
+		return
+	}  
 	// TODO issues with stderr and cross compiling for Linux
-	$else {
-		println(s)
-	}
+	println(s)
 }
 
 pub fn print(s string) {
@@ -99,14 +115,14 @@ pub fn print(s string) {
 }
 
 __global total_m i64 = 0
-//__global nr_mallocs int = 0 
+//__global nr_mallocs int = 0
 pub fn malloc(n int) byteptr {
 	if n < 0 {
 		panic('malloc(<0)')
 	}
-	//nr_mallocs++ 
-/* 
-TODO 
+	//nr_mallocs++
+/*
+TODO
 #ifdef VPLAY
 	if n > 10000 {
 		panic('allocating more than 10 KB is not allowed in the playground')
@@ -117,7 +133,7 @@ TODO
 	println('\n\n\nmalloc($n) total=$total_m')
 	print_backtrace()
 #endif
-*/ 
+*/
 	ptr := C.malloc(n)
 	if isnil(ptr) {
 		panic('malloc($n) failed')
@@ -140,6 +156,10 @@ fn memdup(src voidptr, sz int) voidptr {
 	mem := malloc(sz)
 	return C.memcpy(mem, src, sz)
 }
+
+fn v_ptr_free(ptr voidptr) {
+	C.free(ptr)
+}	
 
 
 

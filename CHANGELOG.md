@@ -1,21 +1,79 @@
-## V 0.1.19
-*XX Aug 2019*
+## V 0.1.21
+*30 Sep 2019*
 
+- `none` keyword for optionals.
+- Solaris support.
+- All table lookup functions now use `none`.
+- varargs: `fn foo(bar int, params ...string) {`
+- Double quotes (`"`) can now also be used to denote strings.
+- GitHub Actions CI in addition to Travis.
+- `-compress` option. The V binary built with `-compress` is only ~90 KB!
+- More memory management.
+- Unused modules result in an error.
+- "Unused variable/module" errors are now warnings in non-production builds.
+- Duplicate methods with the same name can no longer be defined.
+- Struct names must be capitalized, variable/function names must use snake_case.
+- Error messages are now even nicer!
+- Lots of fixes in automatic `.str()` method generation for structs and arrays.
+- ~30% faster parser (files are no longer parsed separately for each pass).
+- `_` is no longer a variable, but an actual syntax construct to skip unused values, like in Go.
+- Multiple returns (`fn foo() (int, string) {`).
+- `!` can now only be used with booleans.
+
+
+## V 0.1.20
+*17 Sep 2019*
+
+- JavaScript backend!
+- Hundreds of C warnings were fixed. `gcc v.c` now builds without
+any warnings.
+- The mutability check now applies to function args (mutable
+receivers that are not modified result in a compilation error).
+- V tests now show how long each test took.
+- Official Android support (only console applications via Termux for now).
+- Typo check. If a variable/function/module etc is misspelled,
+V will suggest the correct name.
+- Lots of Microsoft C fixes, and a separate Travis instance for
+this backend.
+- Bitwise operators `|`, `^`, `&` no longer work with booleans.
+
+
+
+
+
+## V 0.1.19
+*12 Sep 2019*
+
+- Lots of refactoring, simplifications, and optimizations in the compiler.
+- Experimental memory management at compilation (only for the V compiler itself for now).
+- Lots of ORM fixes.
+- Functions can now be inlined via the `[inline]` attribute.
 - New `mysql` module.
-- Custom json field names: `struct User { last_name string [json:lastName] }`.
 - Better error format that is supported by all major editors (go to error).
+- Error messages now point to the actual place where the error happened.
+- Custom json field names: `struct User { last_name string [json:lastName] }`.
 - Raw json fields via the `[raw]` attribute.
-- `import const` was removed from the language.
 - All C code was removed from the `freetype` module.
+- `gg` module can now render all Unicode characters.
 - `[typedef]` attribute for imported C struct typedefs.
 - Support of Objective C interfaces (primarily for using Cocoa).
 - REPL: clear command and custom functions.
+- REPL tests (which are also used for testing certain compiler errors).
 - Syntax bug fixed: `foo[0] += 10` is now possible.
 - http: support plain HTTP protocol and follow redirects.
+- http: header data is now processed correctly.
 - net: basic UDP support.
-- Functions can now be inlined via the `[inline]` attribute.
-- `gg` module can now render all Unicode characters.
-
+- `import const` was removed from the language.
+- `array.contains()` was removed from the language (`in` should be used instead).
+- `[0; len]` syntax was removed (replaced with a simpler `[0].repeat(len)`)
+- Primitive aliases were removed to simplify the language.
+- GitHub supports V now!
+- Backtraces are now printed on panics.
+- A new awesome `readline` module.
+- V.c is now regenerated automatically after every commit.
+- A bug with struct ordering was fixed, now structs can be declared in any order.
+- V modules can now be built with `v build module`.
+- `@FILE, @LINE, @FN, @COLUMN` for debugging.
 
 
 

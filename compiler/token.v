@@ -35,11 +35,10 @@ enum Token {
 	left_shift
 	righ_shift
 	//at // @
-	// = := += -=
-	assign
-	decl_assign
-	plus_assign
-	minus_assign
+	assign // =
+	decl_assign // :=
+	plus_assign // +=
+	minus_assign // -=
 	div_assign
 	mult_assign
 	xor_assign
@@ -68,6 +67,7 @@ enum Token {
 	nl
 	dot
 	dotdot
+	ellipsis
 	// keywords
 	keyword_beg
 	key_as
@@ -96,6 +96,7 @@ enum Token {
 	key_match
 	key_module
 	key_mut
+	key_none
 	key_return
 	key_select
 	key_sizeof
@@ -124,7 +125,7 @@ fn build_keys() map[string]int {
 
 // TODO remove once we have `enum Token { name('name') if('if') ... }`
 fn build_token_str() []string {
-	mut s := [''; NrTokens]
+	mut s := [''].repeat(NrTokens)
 	s[Token.keyword_beg] = ''
 	s[Token.keyword_end] = ''
 	s[Token.eof] = 'eof'
@@ -149,6 +150,7 @@ fn build_token_str() []string {
 	s[Token.not] = '!'
 	s[Token.dot] = '.'
 	s[Token.dotdot] = '..'
+	s[Token.ellipsis] = '...'
 	s[Token.comma] = ','
 	//s[Token.at] = '@'
 	s[Token.semicolon] = ';'
@@ -222,6 +224,7 @@ fn build_token_str() []string {
 	s[Token.key_defer] = 'defer'
 	s[Token.key_match] = 'match'
 	s[Token.key_select] = 'select'
+	s[Token.key_none] = 'none'
 	return s
 }
 
