@@ -1,55 +1,53 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
-
 module math
+
+#include <math.h>
+
+fn C.acos(x f64) f64
+fn C.asin(x f64) f64
+fn C.atan(x f64) f64
+fn C.atan2(y f64, x f64) f64
+fn C.cbrt(x f64) f64
+fn C.ceil(x f64) f64
+fn C.cos(x f64) f64
+fn C.cosf(x f32) f32
+fn C.cosh(x f64) f64
+fn C.erf(x f64) f64
+fn C.erfc(x f64) f64
+fn C.exp(x f64) f64
+fn C.exp2(x f64) f64
+fn C.fabs(x f64) f64
+fn C.floor(x f64) f64
+fn C.fmod(x f64, y f64) f64
+fn C.hypot(x f64, y f64) f64
+fn C.log(x f64) f64
+fn C.log2(x f64) f64
+fn C.log10(x f64) f64
+fn C.lgamma(x f64) f64
+fn C.pow(x f64, y f64) f64
+fn C.powf(x f32, y f32) f32
+fn C.round(x f64) f64
+fn C.sin(x f64) f64
+fn C.sinf(x f32) f32
+fn C.sinh(x f64) f64
+fn C.sqrt(x f64) f64
+fn C.sqrtf(x f32) f32
+fn C.tgamma(x f64) f64
+fn C.tan(x f64) f64
+fn C.tanf(x f32) f32
+fn C.tanh(x f64) f64
+fn C.trunc(x f64) f64
 
 // NOTE
 // When adding a new function, please make sure it's in the right place.
 // All functions are sorted alphabetically.
 
-const (
-	E   = 2.71828182845904523536028747135266249775724709369995957496696763
-	Pi  = 3.14159265358979323846264338327950288419716939937510582097494459
-	Phi = 1.61803398874989484820458683436563811772030917980576286213544862
-	Tau = 6.28318530717958647692528676655900576839433879875021164194988918
-
-	Sqrt2   = 1.41421356237309504880168872420969807856967187537694807317667974
-	SqrtE   = 1.64872127070012814684865078781416357165377610071014801157507931
-	SqrtPi  = 1.77245385090551602729816748334114518279754945612238712821380779
-	SqrtTau = 2.50662827463100050241576528481104525300698674060993831662992357
-	SqrtPhi = 1.27201964951406896425242246173749149171560804184009624861664038
-
-	Ln2    = 0.693147180559945309417232121458176568075500134360255254120680009
-	Log2E  = 1.0 / Ln2
-	Ln10   = 2.30258509299404568401799145468436420760110148862877297603332790
-	Log10E = 1.0 / Ln10
-)
-
-const (
-        MaxI8   = 127
-        MinI8   = -128
-        MaxI16  = 32767
-        MinI16  = -32768
-        MaxI32  = 2147483647
-        MinI32  = -2147483648
-//        MaxI64  = ((1<<63) - 1)
-//        MinI64  = (-(1 << 63) )
-        MaxU8  = 255
-        MaxU16 = 65535
-        MaxU32 = 4294967295
-        MaxU64 = 18446744073709551615
-)
-
 // Returns the absolute value.
 pub fn abs(a f64) f64 {
-	if a < 0 {
-		return -a
-	}
-	return a
+	return C.fabs(a)
 }
-
-fn C.acos(a f64) f64
 
 // acos calculates inverse cosine (arccosine).
 pub fn acos(a f64) f64 {
@@ -76,14 +74,19 @@ pub fn cbrt(a f64) f64 {
 	return C.cbrt(a)
 }
 
-// ceil returns the nearest integer greater or equal to the provided value.
-pub fn ceil(a f64) int {
+// ceil returns the nearest f64 greater or equal to the provided value.
+pub fn ceil(a f64) f64 {
 	return C.ceil(a)
 }
 
 // cos calculates cosine.
 pub fn cos(a f64) f64 {
 	return C.cos(a)
+}
+
+// cosf calculates cosine. (float32)
+pub fn cosf(a f32) f32 {
+	return C.cosf(a)
 }
 
 // cosh calculates hyperbolic cosine.
@@ -93,7 +96,7 @@ pub fn cosh(a f64) f64 {
 
 // degrees convert from degrees to radians.
 pub fn degrees(radians f64) f64 {
-	return radians * (180.0 / Pi)
+	return radians * (180.0 / pi)
 }
 
 // exp calculates exponent of the number (math.pow(math.E, a)).
@@ -103,6 +106,9 @@ pub fn exp(a f64) f64 {
 
 // digits returns an array of the digits of n in the given base.
 pub fn digits(_n, base int) []int {
+	if base < 2 {
+		panic('digits: Cannot find digits of n with base $base')
+	}
 	mut n := _n
 	mut sign := 1
 	if n < 0 {
@@ -132,52 +138,7 @@ pub fn exp2(a f64) f64 {
 	return C.exp2(a)
 }
 
-// factorial calculates the factorial of the provided value.
-// TODO bring back once multiple value functions are implemented
-/*
-fn recursive_product( n int, current_number_ptr &int) int{
-    mut m := n / 2
-    if (m == 0){
-        return *current_number_ptr += 2
-    }
-    if (n == 2){
-        return (*current_number_ptr += 2) * (*current_number_ptr += 2)
-    }
-    return recursive_product((n - m), *current_number_ptr) * recursive_product(m, *current_number_ptr)
-}
-
-pub fn factorial(n int) i64 {
-    if n < 0 {
-        panic('factorial: Cannot find factorial of negative number')
-    }
-    if n < 2 {
-        return i64(1)
-    }
-    mut r := 1
-    mut p := 1
-    mut current_number := 1
-    mut h := 0
-    mut shift := 0
-    mut high := 1
-    mut len := high
-    mut log2n := int(floor(log2(n)))
-    for ;h != n; {
-        shift += h
-        h = n >> log2n
-        log2n -= 1
-        len = high
-        high = (h - 1) | 1
-        len = (high - len)/2
-        if (len > 0){
-            p *= recursive_product(len, &current_number)
-            r *= p
-        }
-    }
-    return i64((r << shift))
-}
-*/
-
-// floor returns the nearest integer lower or equal of the provided value.
+// floor returns the nearest f64 lower or equal of the provided value.
 pub fn floor(a f64) f64 {
 	return C.floor(a)
 }
@@ -275,9 +236,14 @@ pub fn pow(a, b f64) f64 {
 	return C.pow(a, b)
 }
 
+// powf returns base raised to the provided power. (float32)
+pub fn powf(a, b f32) f32 {
+	return C.powf(a, b)
+}
+
 // radians convert from radians to degrees.
 pub fn radians(degrees f64) f64 {
-	return degrees * (Pi / 180.0)
+	return degrees * (pi / 180.0)
 }
 
 // round returns the integer nearest to the provided value.
@@ -290,6 +256,11 @@ pub fn sin(a f64) f64 {
 	return C.sin(a)
 }
 
+// sinf calculates sine. (float32)
+pub fn sinf(a f32) f32 {
+	return C.sinf(a)
+}
+
 // sinh calculates hyperbolic sine.
 pub fn sinh(a f64) f64 {
 	return C.sinh(a)
@@ -299,9 +270,20 @@ pub fn sinh(a f64) f64 {
 pub fn sqrt(a f64) f64 {
 	return C.sqrt(a)
 }
+
+// sqrtf calculates square-root of the provided value. (float32)
+pub fn sqrtf(a f32) f32 {
+	return C.sqrtf(a)
+}
+
 // tan calculates tangent.
 pub fn tan(a f64) f64 {
 	return C.tan(a)
+}
+
+// tanf calculates tangent. (float32)
+pub fn tanf(a f32) f32 {
+	return C.tanf(a)
 }
 
 // tanh calculates hyperbolic tangent.
@@ -313,4 +295,30 @@ pub fn tanh(a f64) f64 {
 // larger in magnitude than a.
 pub fn trunc(a f64) f64 {
 	return C.trunc(a)
+}
+
+// Faster approximate sin() and cos() implemented from lolremez
+pub fn aprox_sin(a f64) f64 {
+	a0 := 1.91059300966915117e-31
+	a1 := 1.00086760103908896
+	a2 := -1.21276126894734565e-2
+	a3 := -1.38078780785773762e-1
+	a4 := -2.67353392911981221e-2
+	a5 := 2.08026600266304389e-2
+	a6 := -3.03996055049204407e-3
+	a7 := 1.38235642404333740e-4
+	return a0 + a * (a1 + a * (a2 + a * (a3 + a * (a4 + a * (a5 + a * (a6 + a * a7))))))
+}
+
+pub fn aprox_cos(a f64) f64 {
+	a0 := 9.9995999154986614e-1
+	a1 := 1.2548995793001028e-3
+	a2 := -5.0648546280678015e-1
+	a3 := 1.2942246466519995e-2
+	a4 := 2.8668384702547972e-2
+	a5 := 7.3726485210586547e-3
+	a6 := -3.8510875386947414e-3
+	a7 := 4.7196604604366623e-4
+	a8 := -1.8776444013090451e-5
+	return a0 + a * (a1 + a * (a2 + a * (a3 + a * (a4 + a * (a5 + a * (a6 + a * (a7 + a * a8)))))))
 }

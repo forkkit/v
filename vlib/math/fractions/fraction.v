@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -79,6 +79,7 @@ pub fn (f1 Fraction) divide(f2 Fraction) Fraction {
 
 // Fraction reciprocal method
 pub fn (f1 Fraction) reciprocal() Fraction {
+	if f1.n == 0 { panic('Denominator cannot be zero') }
 	return Fraction{f1.d, f1.n}
 }
 

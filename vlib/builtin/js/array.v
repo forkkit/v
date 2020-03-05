@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@ module builtin
 
 import strings
 
-struct array {
+pub struct array {
 pub:
 	data         voidptr
 	len          int
@@ -33,6 +33,11 @@ pub fn _make(len, cap, elm_size int) array {
 
 
 */
+
+pub fn make(len, cap, elm_size int) array {
+	return array{}
+}
+
 fn array_repeat(val voidptr, nr_repeats, elm_size int) array {
 	return val
 }
@@ -104,7 +109,7 @@ pub fn (a array) free() {
 pub fn (a []string) str() string {
 	mut sb := strings.new_builder(a.len * 3)
 	sb.write('[')
-	for i := 0; i < a.len; i++ {
+	for i in 0..a.len {
 		val := a[i]
 		sb.write('"')
 		sb.write(val)
@@ -121,7 +126,7 @@ pub fn (b []byte) hex() string {
 	return 'sdf'
 }
 
-pub fn (arr mut array) _push_many(val voidptr, size int) {
+pub fn (arr mut array) push_many(val voidptr, size int) {
 }
 
 pub fn free(voidptr) {

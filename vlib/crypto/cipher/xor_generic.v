@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -24,7 +24,7 @@ pub fn xor_bytes(dst mut []byte, a, b []byte) int {
 
 // n needs to be smaller or equal than the length of a and b.
 pub fn safe_xor_bytes(dst mut []byte, a, b []byte, n int) {
-	for i := 0; i < n; i++ {
+	for i in 0..n {
 		dst[i] = a[i] ^ b[i]
 	}
 }

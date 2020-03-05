@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -18,12 +18,8 @@ fn main() {
 		return
 	}
 	mut m := map[string]int
-	for word in contents.to_lower().split(' ') {
-		key := filter_word(word)
-		if key == '' {
-			continue
-		}
-		m[key] = m[key] + 1// TODO m[key]++
+	for word in extract_words(contents) {
+		m[word] = m[word] + 1 // TODO m[key]++
 	}
 	// Sort the keys
 	mut keys := m.keys() 
@@ -35,25 +31,43 @@ fn main() {
 	}
 }
 
+// Creates an array of words from a given string
+fn extract_words(contents string) []string {
+	mut splitted := []string
+	for space_splitted in contents.to_lower().split(' ') {
+		if space_splitted.contains('\n') {
+			splitted << space_splitted.split('\n')
+		}
+		else {
+			splitted << space_splitted
+		}
+	}
+
+	mut results := []string
+	for s in splitted {
+		result := filter_word(s)
+		if result == '' {
+			continue
+		}
+		results << result
+	}
+
+	return results
+}
+
 // Removes punctuation
 fn filter_word(word string) string {
 	if word == '' || word == ' ' {
 		return ''
 	}
 	mut i := 0
-	for i < word.len && !is_letter(word[i]) {
+	for i < word.len && !word[i].is_letter() {
 		i++
 	}
 	start := i
-	for i < word.len && is_letter(word[i]) {
+	for i < word.len && word[i].is_letter() {
 		i++
 	}
 	end := i
-	return word.substr(start, end)
+	return word[start..end]
 }
-
-// TODO remove once it's possible to call word[i].is_letter()
-fn is_letter(c byte) bool {
-	return c.is_letter()
-}
-

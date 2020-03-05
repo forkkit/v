@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -32,12 +32,12 @@ pub fn new_cipher(key []byte) ?Cipher {
 	mut c := Cipher{
 		s: [u32(0)].repeat(256)
 	}
-	for i := 0; i < 256; i++ {
+	for i in 0..256 {
 		c.s[i] = u32(i)
 	}
 	mut j := byte(0)
-	for i := 0; i < 256; i++ {
-		j += byte(c.s[i]) + byte(key[i%key.len])
+	for i in 0..256 {
+		j += byte(c.s[i]) + key[i%key.len]
 		tmp := c.s[i]
 		c.s[i] = c.s[j]
 		c.s[j] = tmp
@@ -63,13 +63,13 @@ pub fn (c mut Cipher) xor_key_stream(dst mut []byte, src []byte) {
 	if src.len == 0 {
 		return
 	}
-	if subtle.inexact_overlap(dst.left(src.len), src) {
+	if subtle.inexact_overlap(dst[..src.len], src) {
 		panic('crypto.rc4: invalid buffer overlap')
 	}
 	mut i := c.i
 	mut j := c.j
 	_ = dst[src.len-1]
-	*dst = dst.left(src.len) // eliminate bounds check from loop
+	*dst = dst[..src.len] // eliminate bounds check from loop
 	for k, v in src {
 		i += byte(1)
 		x := c.s[i]

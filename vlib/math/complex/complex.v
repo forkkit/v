@@ -1,12 +1,13 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
 module complex
 
-import math 
+import math
 
-struct Complex {
+pub struct Complex {
+pub:
 	re f64
 	im f64
 }
@@ -16,7 +17,7 @@ pub fn complex(re f64, im f64) Complex {
 }
 
 // To String method
-pub fn (c Complex) str() string { 
+pub fn (c Complex) str() string {
 	mut out := '$c.re'
 	out += if c.im >= 0 {
 		'+$c.im'
@@ -39,7 +40,7 @@ pub fn (c Complex) mod() f64 {
 
 
 // Complex Angle
-pub fn (c Complex) angle() f64 { 
+pub fn (c Complex) angle() f64 {
 	return math.atan2(c.im, c.re)
 }
 
@@ -54,23 +55,21 @@ pub fn (c1 Complex) - (c2 Complex) Complex {
 }
 
 // Complex Multiplication c1 * c2
-// Currently Not Supported
-// pub fn (c1 Complex) * (c2 Complex) Complex {
-// 	return Complex{
-// 		(c1.re * c2.re) + ((c1.im * c2.im) * -1), 
-// 		(c1.re * c2.im) + (c1.im * c2.re)
-// 	}
-// }
+pub fn (c1 Complex) * (c2 Complex) Complex {
+	return Complex{
+		(c1.re * c2.re) + ((c1.im * c2.im) * -1),
+		(c1.re * c2.im) + (c1.im * c2.re)
+	}
+}
 
 // Complex Division c1 / c2
-// Currently Not Supported
-// pub fn (c1 Complex) / (c2 Complex) Complex {
-// 	denom := (c2.re * c2.re) + (c2.im * c2.im)
-// 	return Complex { 
-// 		((c1.re * c2.re) + ((c1.im * -c2.im) * -1))/denom, 
-// 		((c1.re * -c2.im) + (c1.im * c2.re))/denom
-// 	}
-// }
+pub fn (c1 Complex) / (c2 Complex) Complex {
+	denom := (c2.re * c2.re) + (c2.im * c2.im)
+	return Complex {
+		((c1.re * c2.re) + ((c1.im * -c2.im) * -1))/denom,
+		((c1.re * -c2.im) + (c1.im * c2.re))/denom
+	}
+}
 
 // Complex Addition c1.add(c2)
 pub fn (c1 Complex) add(c2 Complex) Complex {
@@ -85,7 +84,7 @@ pub fn (c1 Complex) subtract(c2 Complex) Complex {
 // Complex Multiplication c1.multiply(c2)
 pub fn (c1 Complex) multiply(c2 Complex) Complex {
 	return Complex{
-		(c1.re * c2.re) + ((c1.im * c2.im) * -1), 
+		(c1.re * c2.re) + ((c1.im * c2.im) * -1),
 		(c1.re * c2.im) + (c1.im * c2.re)
 	}
 }
@@ -93,8 +92,8 @@ pub fn (c1 Complex) multiply(c2 Complex) Complex {
 // Complex Division c1.divide(c2)
 pub fn (c1 Complex) divide(c2 Complex) Complex {
 	denom := (c2.re * c2.re) + (c2.im * c2.im)
-	return Complex { 
-		((c1.re * c2.re) + ((c1.im * -c2.im) * -1)) / denom, 
+	return Complex {
+		((c1.re * c2.re) + ((c1.im * -c2.im) * -1)) / denom,
 		((c1.re * -c2.im) + (c1.im * c2.re)) / denom
 	}
 }
@@ -105,7 +104,7 @@ pub fn (c Complex) conjugate() Complex{
 }
 
 // Complex Additive Inverse
-// Based on 
+// Based on
 // http://tutorial.math.lamar.edu/Extras/ComplexPrimer/Arithmetic.aspx
 pub fn (c Complex) addinv() Complex {
 	return Complex{-c.re, -c.im}
@@ -120,7 +119,7 @@ pub fn (c Complex) mulinv() Complex {
 		-c.im / (c.re * c.re + c.im * c.im)
 	}
 }
- 
+
 // Complex Power
 // Based on
 // https://www.khanacademy.org/math/precalculus/imaginary-and-complex-numbers/multiplying-and-dividing-complex-numbers-in-polar-form/a/complex-number-polar-form-review
@@ -133,25 +132,25 @@ pub fn (c Complex) pow(n f64) Complex {
 	}
 }
 
-// Complex nth root 
+// Complex nth root
 pub fn (c Complex) root(n f64) Complex {
 	return c.pow(1.0 / n)
 }
 
 // Complex Exponential
-// Using Euler's Identity 
+// Using Euler's Identity
 // Based on
 // https://www.math.wisc.edu/~angenent/Free-Lecture-Notes/freecomplexnumbers.pdf
 pub fn (c Complex) exp() Complex {
 	a := math.exp(c.re)
 	return Complex {
-		a * math.cos(c.im), 
+		a * math.cos(c.im),
 		a * math.sin(c.im)
 	}
 }
 
 // Complex Natural Logarithm
-// Based on 
+// Based on
 // http://www.chemistrylearning.com/logarithm-of-complex-number/
 pub fn (c Complex) ln() Complex {
 	return Complex {
@@ -161,7 +160,7 @@ pub fn (c Complex) ln() Complex {
 }
 
 // Complex Log Base Complex
-// Based on 
+// Based on
 // http://www.milefoot.com/math/complex/summaryops.htm
 pub fn (c Complex) log(base Complex) Complex {
 	return base.ln().divide(c.ln())
@@ -183,7 +182,7 @@ pub fn (c Complex) cpow(p Complex) Complex {
 	d := p.re * a + (1.0/2) * p.im * math.log(b)
 	t1 := math.pow(b,p.re/2) * math.exp(-p.im*a)
 	return Complex{
-		t1 * math.cos(d), 
+		t1 * math.cos(d),
 		t1 * math.sin(d)
 	}
 }
@@ -237,7 +236,7 @@ pub fn (c Complex) csc() Complex {
 }
 
 // Complex Arc Sin / Sin Inverse
-// Based on 
+// Based on
 // http://www.milefoot.com/math/complex/summaryops.htm
 pub fn (c Complex) asin() Complex {
 	return complex(0,-1).multiply(
@@ -253,7 +252,7 @@ pub fn (c Complex) asin() Complex {
 }
 
 // Complex Arc Consine / Consine Inverse
-// Based on 
+// Based on
 // http://www.milefoot.com/math/complex/summaryops.htm
 pub fn (c Complex) acos() Complex {
 	return complex(0,-1).multiply(
@@ -270,7 +269,7 @@ pub fn (c Complex) acos() Complex {
 }
 
 // Complex Arc Tangent / Tangent Inverse
-// Based on 
+// Based on
 // http://www.milefoot.com/math/complex/summaryops.htm
 pub fn (c Complex) atan() Complex {
 	i := complex(0,1)
@@ -284,21 +283,21 @@ pub fn (c Complex) atan() Complex {
 }
 
 // Complex Arc Cotangent / Cotangent Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse_Functions.htm
 pub fn (c Complex) acot() Complex {
 	return complex(1,0).divide(c).atan()
 }
 
 // Complex Arc Secant / Secant Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse_Functions.htm
 pub fn (c Complex) asec() Complex {
 	return complex(1,0).divide(c).acos()
 }
 
 // Complex Arc Cosecant / Cosecant Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse_Functions.htm
 pub fn (c Complex) acsc() Complex {
 	return complex(1,0).divide(c).asin()
@@ -353,7 +352,7 @@ pub fn (c Complex) csch() Complex {
 }
 
 // Complex Hyperbolic Arc Sin / Sin Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 pub fn (c Complex) asinh() Complex {
 	return c.add(
@@ -364,7 +363,7 @@ pub fn (c Complex) asinh() Complex {
 }
 
 // Complex Hyperbolic Arc Consine / Consine Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 pub fn (c Complex) acosh() Complex {
 	if(c.re > 1) {
@@ -388,7 +387,7 @@ pub fn (c Complex) acosh() Complex {
 }
 
 // Complex Hyperbolic Arc Tangent / Tangent Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 pub fn (c Complex) atanh() Complex {
 	one := complex(1,0)
@@ -418,7 +417,7 @@ pub fn (c Complex) atanh() Complex {
 }
 
 // Complex Hyperbolic Arc Cotangent / Cotangent Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 pub fn (c Complex) acoth() Complex {
 	one := complex(1,0)
@@ -448,7 +447,7 @@ pub fn (c Complex) acoth() Complex {
 }
 
 // Complex Hyperbolic Arc Secant / Secant Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 // For certain scenarios, Result mismatch in crossverification with Wolfram Alpha - analysis pending
 // pub fn (c Complex) asech() Complex {
@@ -456,7 +455,7 @@ pub fn (c Complex) acoth() Complex {
 	// if(c.re < -1.0) {
 	// 	return one.subtract(
 	// 		one.subtract(
-	// 			c.pow(2) 
+	// 			c.pow(2)
 	// 		)
 	// 		.root(2)
 	// 	)
@@ -466,7 +465,7 @@ pub fn (c Complex) acoth() Complex {
 	// else {
 		// return one.add(
 		// 	one.subtract(
-		// 		c.pow(2) 
+		// 		c.pow(2)
 		// 	)
 		// 	.root(2)
 		// )
@@ -476,14 +475,14 @@ pub fn (c Complex) acoth() Complex {
 // }
 
 // Complex Hyperbolic Arc Cosecant / Cosecant Inverse
-// Based on 
+// Based on
 // http://www.suitcaseofdreams.net/Inverse__Hyperbolic_Functions.htm
 pub fn (c Complex) acsch() Complex {
 	one := complex(1,0)
 	if(c.re < 0) {
 		return one.subtract(
 			one.add(
-				c.pow(2) 
+				c.pow(2)
 			)
 			.root(2)
 		)
@@ -492,7 +491,7 @@ pub fn (c Complex) acsch() Complex {
 	} else {
 		return one.add(
 			one.add(
-				c.pow(2) 
+				c.pow(2)
 			)
 			.root(2)
 		)

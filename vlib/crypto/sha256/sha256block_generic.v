@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -12,7 +12,7 @@ module sha256
 import math.bits
 
 const (
-	_K = [
+	_k = [
 		0x428a2f98,
 		0x71374491,
 		0xb5c0fbcf,
@@ -94,10 +94,10 @@ fn block_generic(dig mut Digest, p_ []byte) {
 	mut h6 := dig.h[6]
 	mut h7 := dig.h[7]
 
-	for p.len >= Chunk {
+	for p.len >= chunk {
 		// Can interlace the computation of w with the
 		// rounds below if needed for speed.
-		for i := 0; i < 16; i++ {
+		for i in 0..16 {
 			j := i * 4
 			w[i] = u32(p[j]<<24) | u32(p[j+1]<<16) | u32(p[j+2]<<8) | u32(p[j+3])
 		}
@@ -118,8 +118,8 @@ fn block_generic(dig mut Digest, p_ []byte) {
 		mut g := h6
 		mut h := h7
 
-		for i := 0; i < 64; i++ {
-			t1 := h + ((bits.rotate_left_32(e, -6)) ^ (bits.rotate_left_32(e, -11)) ^ (bits.rotate_left_32(e, -25))) + ((e & f) ^ (~e & g)) + u32(_K[i]) + w[i]
+		for i in 0..64 {
+			t1 := h + ((bits.rotate_left_32(e, -6)) ^ (bits.rotate_left_32(e, -11)) ^ (bits.rotate_left_32(e, -25))) + ((e & f) ^ (~e & g)) + u32(_k[i]) + w[i]
 			t2 := ((bits.rotate_left_32(a, -2)) ^ (bits.rotate_left_32(a, -13)) ^ (bits.rotate_left_32(a, -22))) + ((a & b) ^ (a & c) ^ (b & c))
 
 			h = g
@@ -141,10 +141,10 @@ fn block_generic(dig mut Digest, p_ []byte) {
 		h6 += g
 		h7 += h
 
-		if Chunk >= p.len {
-			p = []byte
+		if chunk >= p.len {
+			p = []
 		} else {
-			p = p.right(Chunk)
+			p = p[chunk..]
 		}
 	}
 

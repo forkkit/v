@@ -21,7 +21,7 @@ fn display_help() {
 
 fn option_parser() bool {
     help := Options{'--help', '-h'}
-    for i := 0; i < os.args.len; i++ {
+    for i in 0..os.args.len {
         if os.args[i]== help.long_opt || os.args[i]== help.short_opt {
             display_help()
             return true
@@ -31,7 +31,7 @@ fn option_parser() bool {
 }
 
 fn str_is_nbr(s string) bool {
-	for i := 0; i < s.len; i++ {
+	for i in 0..s.len {
         if !s[i].is_digit() {
             return false
         }
@@ -89,7 +89,7 @@ fn get_bet(money int) int {
 
 fn run_wheel(bet_nbr int, _bet int) int {
 	mut bet := _bet
-    rand.seed(time.now().uni)
+    rand.seed(time.now().unix)
     winning_nbr := rand.next(50)
     print('Roulette Wheel spinning... and stops on the number $winning_nbr which is a ')
     if winning_nbr % 2 == 1 {

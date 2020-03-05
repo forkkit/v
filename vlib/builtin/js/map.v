@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@ module builtin
 
 import strings
 
-struct map {
+pub struct map {
 	obj voidptr
 }
 
@@ -21,9 +21,6 @@ struct map {
 //fn (n & mapnode) find2(key string, element_size int) bool{
 	//return false
 //}
-
-fn (m mut map) _set(key string, val voidptr) {
-}
 
 //fn preorder_keys(node &mapnode, keys mut []string, key_i int) int {
 	//return 0
@@ -40,7 +37,7 @@ fn (m map) get(key string, out voidptr) bool {
 pub fn (m mut map) delete(key string) {
 }
 
-fn (m map) _exists(key string) bool {
+fn (m map) exists(key string) bool {
 	return false
 }
 

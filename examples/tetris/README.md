@@ -3,13 +3,13 @@
 Tetris has a temporary dependency on GLFW. 
 
 ## macOS
-`brew install glfw` 
+`brew install glfw freetype` 
  
 ## Ubuntu 
-`sudo apt install libglfw3 libglfw3-dev`
+`sudo apt install libglfw3 libglfw3-dev libfreetype6-dev libssl-dev`
 
 ## Arch (and Manjaro)
 `sudo pacman -S glfw-x11` 
 
 ## Windows 
-Copy `thirdparty/glfw/glfw3.dll` to this directory. 
+Copy `thirdparty/glfw/glfw3.dll` & `thirdparty/freetype/win64/freetype.dll` to this directory. 

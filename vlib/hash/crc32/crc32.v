@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -8,14 +8,14 @@ module crc32
 
 // polynomials
 const (
-	IEEE       = 0xedb88320
-	Castagnoli = 0x82f63b78
-	Koopman    = 0xeb31d82e
+	ieee       = 0xedb88320
+	castagnoli = 0x82f63b78
+	koopman    = 0xeb31d82e
 )
 
 // The size of a CRC-32 checksum in bytes.
 const (
-	Size = 4
+	size = 4
 )
 
 struct Crc32 {
@@ -24,11 +24,11 @@ mut:
 }
 
 fn(c mut Crc32) generate_table(poly int) {
-	for i := 0; i < 256; i++ {
+	for i in 0..256 {
 		mut crc := u32(i)
-		for j := 0; j < 8; j++ {
-			if crc&u32(1) == u32(1) {
-				crc = u32((crc >> u32(1)) ^ poly)
+		for j in 0..8 {
+			if crc & u32(1) == u32(1) {
+				crc = (crc >> 1) ^ u32(poly)
 			} else {
 				crc >>= u32(1)
 			}
@@ -36,10 +36,10 @@ fn(c mut Crc32) generate_table(poly int) {
 		c.table << crc
 	}
 }
- 
+
 fn(c &Crc32) sum32(b []byte) u32 {
 	mut crc := ~u32(0)
-	for i := 0; i < b.len; i++ {
+	for i in 0..b.len {
 		crc = c.table[byte(crc)^b[i]] ^ u32(crc >> u32(8))
 	}
 	return ~crc
@@ -56,8 +56,8 @@ pub fn new(poly int) &Crc32 {
 	return c
 }
 
-// calculate crc32 using IEEE
+// calculate crc32 using ieee
 pub fn sum(b []byte) u32 {
-	mut c := new(IEEE)
+	c := new(ieee)
 	return c.sum32(b)
 }

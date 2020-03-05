@@ -1,10 +1,10 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
 module builtin
 
-struct string {
+pub struct string {
 //mut:
 	//hash_cache int
 pub:
@@ -16,6 +16,15 @@ pub:
 fn C.strlen(s byteptr) int
 
 fn todo() { }
+
+pub fn tos(s byteptr) string {
+	len := 0
+	#len = s.length;
+	return string{
+		str: s
+		len: len
+	}	
+}	
 
 
 pub fn (a string) clone() string {
@@ -52,10 +61,6 @@ pub fn (s string) u64() u64 {
 
 pub fn (s string) split(delim string) []string {
 	return s.split(delim)
-}
-
-pub fn (s string) split_single(delim byte) []string {
-	return s.split(delim.str())
 }
 
 pub fn (s string) split_into_lines() []string {
@@ -139,12 +144,12 @@ pub fn (s string) find_between(start, end string) string {
 		return ''
 	}
 	// First get everything to the right of 'start'
-	val := s.right(start_pos + start.len)
+	val := s[start_pos + start.len..]
 	end_pos := val.index(end)
 	if end_pos == -1 {
 		return val
 	}
-	return val.left(end_pos)
+	return val[..end_pos]
 }
 
 // TODO generic
@@ -215,6 +220,7 @@ fn (s string) at(idx int) byte {
 	}
 	return s.str[idx]
 }
+
 pub fn (c byte) is_digit() bool {
 	return c >= `0` && c <= `9`
 }
@@ -225,6 +231,10 @@ pub fn (c byte) is_hex_digit() bool {
 
 pub fn (c byte) is_oct_digit() bool {
 	return c >= `0` && c <= `7`
+}
+
+pub fn (c byte) is_bin_digit() bool {
+	return c == `0` || c == `1`
 }
 
 pub fn (c byte) is_letter() bool {
@@ -249,7 +259,7 @@ pub fn (s string) all_before(dot string) string {
 	if pos == -1 {
 		return s
 	}
-	return s.left(pos)
+	return s[..pos]
 }
 
 pub fn (s string) all_before_last(dot string) string {
@@ -257,7 +267,7 @@ pub fn (s string) all_before_last(dot string) string {
 	if pos == -1 {
 		return s
 	}
-	return s.left(pos)
+	return s[..pos]
 }
 
 pub fn (s string) all_after(dot string) string {
@@ -265,7 +275,7 @@ pub fn (s string) all_after(dot string) string {
 	if pos == -1 {
 		return s
 	}
-	return s.right(pos + dot.len)
+	return s[pos + dot.len..]
 }
 
 // fn (s []string) substr(a, b int) string {
@@ -309,5 +319,5 @@ pub fn (s string) hash() int {
 }
 
 pub fn (s string) bytes() []byte {
-	return []byte
+	return []
 }

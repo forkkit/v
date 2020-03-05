@@ -1,11 +1,11 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
 module rand
 
 const (
-	ReadError = error('crypro.rand.read() error reading random bytes')
+	read_error = error('crypto.rand.read() error reading random bytes')
 )
 
 // NOTE: temp until we have []bytes(buff)

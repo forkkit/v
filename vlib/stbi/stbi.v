@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -7,11 +7,11 @@ module stbi
 // note we might need special case for this
 // import gl
 
-#flag   -I @VROOT/thirdparty/stb_image
-
-#define STB_IMAGE_IMPLEMENTATION
+#flag -I @VROOT/thirdparty/stb_image
 #include "stb_image.h"
-struct Image {
+#flag @VROOT/thirdparty/stb_image/stbi.o
+
+pub struct Image {
 mut:
 	width       int
 	height      int
@@ -20,6 +20,11 @@ mut:
 	data        voidptr
 	ext         string
 }
+
+fn C.stbi_load() voidptr
+fn C.stbi_load_from_memory() voidptr
+fn C.stbi_image_free()
+fn C.stbi_set_flip_vertically_on_load()
 
 pub fn load(path string) Image {
 	ext := path.all_after('.')
@@ -36,6 +41,22 @@ pub fn load(path string) Image {
 	}
 	return res
 }
+
+//pub fn load_from_memory(buf []byte) Image {
+pub fn load_from_memory(buf byteptr) Image {
+	mut res := Image {
+		ok: true
+		data: 0
+	}
+	flag := C.STBI_rgb_alpha
+	res.data = C.stbi_load_from_memory(buf, 3812, &res.width, &res.height,	&res.nr_channels, flag)
+	if isnil(res.data) {
+		println('stbi image failed to load from memory')
+		exit(1)
+	}
+	return res
+}
+
 
 pub fn (img Image) free() {
 	C.stbi_image_free(img.data)

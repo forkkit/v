@@ -28,15 +28,15 @@ if not exist "%gccpath%" (
     goto:msvcstrap
 )
 
-gcc -std=gnu11 -w -o v2.exe vc\v_win.c
+gcc -std=c99 -municode -w -o v2.exe vc\v_win.c
 if %ERRORLEVEL% NEQ 0 (
     echo gcc failed to compile - Create an issue at 'https://github.com/vlang'
     exit /b 1
 )
 
-echo rebuild from source (twice, in case of C definitions changes)
-v2.exe -o v3.exe compiler
-v3.exe -o v.exe -prod compiler
+echo Now using V to build V...
+v2.exe -o v3.exe cmd/v
+v3.exe -o v.exe -prod cmd/v
 if %ERRORLEVEL% NEQ 0 (
     echo v.exe failed to compile itself - Create an issue at 'https://github.com/vlang'
     exit /b 1
@@ -51,34 +51,47 @@ goto :success
 
 :msvcstrap
 echo Attempting to build v.c  with MSVC...
-
-for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
+set VsWhereDir=%ProgramFiles(x86)%
+set HostArch=x64
+if "%PROCESSOR_ARCHITECTURE%" == "x86" (
+  echo Using x86 Build Tools...
+  set VsWhereDir=%ProgramFiles%
+  set HostArch=x86
+)
+for /f "usebackq tokens=*" %%i in (`"%VsWhereDir%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
   set InstallDir=%%i
 )
 
 if exist "%InstallDir%\Common7\Tools\vsdevcmd.bat" (
-    call "%InstallDir%\Common7\Tools\vsdevcmd.bat" -arch=x64 -host_arch=x64 -no_logo
+    call "%InstallDir%\Common7\Tools\vsdevcmd.bat" -arch=%HostArch% -host_arch=%HostArch% -no_logo
 ) else (
     goto :nocompiler
 )
 
-cl.exe /nologo /w /volatile:ms /Fo.v.c.obj /O2 /MD vc\v_win.c user32.lib kernel32.lib advapi32.lib shell32.lib /link /NOLOGO /OUT:v2.exe /INCREMENTAL:NO
+set ObjFile=.v.c.obj
+
+cl.exe /nologo /w /volatile:ms /Fo%ObjFile% /O2 /MD /D_VBOOTSTRAP vc\v_win.c user32.lib kernel32.lib advapi32.lib shell32.lib /link /NOLOGO /OUT:v2.exe /INCREMENTAL:NO
 if %ERRORLEVEL% NEQ 0 (
     echo cl.exe failed to build V
     goto :compileerror
 )
 
 echo rebuild from source (twice, in case of C definitions changes)
-v2.exe -os msvc -o v3.exe compiler
-v3.exe -os msvc -o v.exe -prod compiler
+v2.exe -cc msvc -o v3.exe cmd/v
+v3.exe -cc msvc -o v -prod cmd/v
 if %ERRORLEVEL% NEQ 0 (
-    echo V failed to build itself
+    echo V failed to build itself with error %ERRORLEVEL%
     goto :compileerror
 )
 
 del v2.exe
 del v3.exe
 rd /s /q vc
+del v.pdb
+del v3.ilk
+del v3.pdb
+del vc140.pdb
+del %ObjFile%
 
 goto :success
 
@@ -101,3 +114,5 @@ echo Exiting from error
 exit /b 1
 
 :success
+echo V build OK!
+v -v

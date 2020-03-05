@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Alexander Medvednikov. All rights reserved.
+// Copyright (c) 2019-2020 Alexander Medvednikov. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
@@ -7,9 +7,6 @@ module builtin
 #include <float.h>
 #include <math.h>
 
-pub fn (d double) str() string {
-	return '0'
-}
 
 pub fn (d f64) str() string {
 	return '0'
@@ -37,10 +34,6 @@ pub fn (nn int) str() string {
 }
 
 pub fn (nn u32) str() string {
-	return '0'
-}
-
-pub fn (nn u8) str() string {
 	return '0'
 }
 
@@ -90,7 +83,7 @@ pub fn (c byte) is_capital() bool {
 
 pub fn (b []byte) clone() []byte {
 	mut res := [byte(0)].repeat(b.len)
-	for i := 0; i < b.len; i++ {
+	for i in 0..b.len {
 		res[i] = b[i]
 	}
 	return res
