@@ -22,58 +22,8 @@ mut:
 
 // helper functions
 const (
-	SLOT_SIZE = 32
+	slot_size = 32
 )
-
-fn bitmask(bitnr int) u32 {
-	return u32(u32(1) << u32(bitnr % SLOT_SIZE))
-}
-
-fn bitslot(size int) int {
-	return size / SLOT_SIZE
-}
-
-fn bitget(instance BitField, bitnr int) int {
-	return (instance.field[bitslot(bitnr)] >> (bitnr % SLOT_SIZE)) & u32(1)
-}
-
-fn bitset(instance mut BitField, bitnr int) {
-	instance.field[bitslot(bitnr)] = instance.field[bitslot(bitnr)] | bitmask(bitnr)
-}
-
-fn bitclear(instance mut BitField, bitnr int) {
-	instance.field[bitslot(bitnr)] = instance.field[bitslot(bitnr)] & ~bitmask(bitnr)
-}
-
-fn bittoggle(instance mut BitField, bitnr int) {
-	instance.field[bitslot(bitnr)] = instance.field[bitslot(bitnr)] ^ bitmask(bitnr)
-}
-/*
-#define BITTEST(a, b) ((a)->field[BITSLOT(b)] & BITMASK(b))
-*/
-
-fn min(input1 int, input2 int) int {
-	if input1 < input2 {
-		return input1
-	}
-	else {
-		return input2
-	}
-}
-
-fn bitnslots(length int) int {
-	return (length - 1) / SLOT_SIZE + 1
-}
-
-fn cleartail(instance mut BitField) {
-	tail := instance.size % SLOT_SIZE
-	if tail != 0 {
-		// create a mask for the tail
-		mask := u32((1 << tail) - 1)
-		// clear the extra bits
-		instance.field[bitnslots(instance.size) - 1] = instance.field[bitnslots(instance.size) - 1] & mask
-	}
-}
 
 // public functions
 
@@ -86,26 +36,24 @@ pub fn from_bytes(input []byte) BitField {
 	return output
 }
 
-// from_string() converts a string of characters ('0' and '1') to a bit
+// from_str converts a string of characters ('0' and '1') to a bit
 // array. Any character different from '0' is treated as '1'.
-
-pub fn from_string(input string) BitField {
+pub fn from_str(input string) BitField {
 	mut output := new(input.len)
 	for i in 0..input.len {
-		if input[i] != 48 {
-			output.setbit(i)
+		if input[i] != `0` {
+			output.set_bit(i)
 		}
 	}
 	return output
 }
 
-// string() converts the bit array to a string of characters ('0' and '1') and
+// str converts the bit array to a string of characters ('0' and '1') and
 // return the string
-
-pub fn (input BitField) string() string {
+pub fn (input BitField) str() string {
 	mut output := ''
 	for i in 0..input.size {
-		if input.getbit(i) == 1 {
+		if input.get_bit(i) == 1 {
 			output = output + '1'
 		}
 		else {
@@ -115,12 +63,11 @@ pub fn (input BitField) string() string {
 	return output
 }
 
-//new() creates an empty bit array of capable of storing 'size' bits.
-
+// new creates an empty bit array of capable of storing 'size' bits.
 pub fn new(size int) BitField {
 	output := BitField{
 		size: size
-		//field: *u32(calloc(bitnslots(size) * SLOT_SIZE / 8))
+		//field: *u32(calloc(bitnslots(size) * slot_size / 8))
 		field: [u32(0)].repeat(bitnslots(size))
 	}
 	return output
@@ -132,121 +79,109 @@ pub fn del(instance *BitField) {
 }
 */
 
-// getbit() returns the value (0 or 1) of bit number 'bit_nr' (count from
-// 0)
-
-pub fn (instance BitField) getbit(bitnr int) int {
-	if bitnr >= instance.size {return 0}
-	return bitget(instance, bitnr)
+// get_bit returns the value (0 or 1) of bit number 'bit_nr' (count from 0).
+pub fn (instance BitField) get_bit(bitnr int) int {
+	if bitnr >= instance.size {
+		return 0
+	}
+	return int((instance.field[bitslot(bitnr)] >> (bitnr % slot_size)) & u32(1))
 }
 
-// setbit() set bit number 'bit_nr' to 1 (count from 0)
-
-pub fn (instance mut BitField) setbit(bitnr int) {
-	if bitnr >= instance.size {return}
-	bitset(mut instance, bitnr)
+// set_bit sets bit number 'bit_nr' to 1 (count from 0).
+pub fn (mut instance BitField) set_bit(bitnr int) {
+	if bitnr >= instance.size {
+		return
+	}
+	instance.field[bitslot(bitnr)] |= bitmask(bitnr)
 }
 
-// clearbit() clears (sets to zero) bit number 'bit_nr' (count from 0)
-
-pub fn (instance mut BitField) clearbit(bitnr int) {
-	if bitnr >= instance.size {return}
-	bitclear(mut instance, bitnr)
+// clear_bit clears (sets to zero) bit number 'bit_nr' (count from 0).
+pub fn (mut instance BitField) clear_bit(bitnr int) {
+	if bitnr >= instance.size {
+		return
+	}
+	instance.field[bitslot(bitnr)] &= ~bitmask(bitnr)
 }
 
-// setall() sets all bits in the array to 1
-
-pub fn (instance mut BitField) setall() {
+// set_all sets all bits in the array to 1.
+pub fn (mut instance BitField) set_all() {
 	for i in 0..bitnslots(instance.size) {
 		instance.field[i] = u32(-1)
 	}
-	cleartail(mut instance)
+	instance.clear_tail()
 }
 
-// clearall() clears (sets to zero) all bits in the array
-
-pub fn (instance mut BitField) clearall() {
+// clear_all clears (sets to zero) all bits in the array.
+pub fn (mut instance BitField) clear_all() {
 	for i in 0..bitnslots(instance.size) {
 		instance.field[i] = u32(0)
 	}
 }
 
-// togglebit() change the value (from 0 to 1 or from 1 to 0) of bit
-// number 'bit_nr'
-
-pub fn (instance mut BitField) togglebit(bitnr int) {
-	if bitnr >= instance.size {return}
-	bittoggle(mut instance, bitnr)
+// toggle_bit changes the value (from 0 to 1 or from 1 to 0) of bit
+// number 'bit_nr'.
+pub fn (mut instance BitField) toggle_bit(bitnr int) {
+	if bitnr >= instance.size {
+		return
+	}
+	instance.field[bitslot(bitnr)] ^= bitmask(bitnr)
 }
 
-// bfand() perform logical AND operation on every pair of bits from 'input1'
-// and 'input2' and return the result as a new array. If inputs differ in size,
+// bf_and performs logical AND operation on every pair of bits from 'input1' and
+// 'input2' and returns the result as a new array. If inputs differ in size,
 // the tail of the longer one is ignored.
-
-pub fn bfand(input1 BitField, input2 BitField) BitField {
+pub fn bf_and(input1 BitField, input2 BitField) BitField {
 	size := min(input1.size, input2.size)
 	bitnslots := bitnslots(size)
 	mut output := new(size)
-	mut i := 0
-	for i < bitnslots {
+	for i in 0..bitnslots {
 		output.field[i] = input1.field[i] & input2.field[i]
-		i++
 	}
-	cleartail(mut output)
+	output.clear_tail()
 	return output
 }
 
-// bfnot() toggle all bits in a bit array and return the result as a new array
-
-pub fn bfnot(input BitField) BitField {
+// bf_not toggles all bits in a bit array and returns the result as a new array.
+pub fn bf_not(input BitField) BitField {
 	size := input.size
 	bitnslots := bitnslots(size)
 	mut output := new(size)
-	mut i := 0
-	for i < bitnslots {
+	for i in 0..bitnslots {
 		output.field[i] = ~input.field[i]
-		i++
 	}
-	cleartail(mut output)
+	output.clear_tail()
 	return output
 }
 
-// bfor() perform logical OR operation on every pair of bits from 'input1' and
-// 'input2' and return the result as a new array. If inputs differ in size, the
-// tail of the longer one is ignored.
-
-pub fn bfor(input1 BitField, input2 BitField) BitField {
+// bf_or performs logical OR operation on every pair of bits from 'input1' and
+// 'input2' and returns the result as a new array. If inputs differ in size,
+// the tail of the longer one is ignored.
+pub fn bf_or(input1 BitField, input2 BitField) BitField {
 	size := min(input1.size, input2.size)
 	bitnslots := bitnslots(size)
 	mut output := new(size)
-	mut i := 0
-	for i < bitnslots {
+	for i in 0..bitnslots {
 		output.field[i] = input1.field[i] | input2.field[i]
-		i++
 	}
-	cleartail(mut output)
+	output.clear_tail()
 	return output
 }
 
-// bfxor(input1 BitField, input2 BitField) perform logical XOR operation on
-// every pair of bits from 'input1' and 'input2' and return the result as a new
-// array. If inputs differ in size, the tail of the longer one is ignored.
-
-pub fn bfxor(input1 BitField, input2 BitField) BitField {
+// bf_xor perform logical XOR operation on every pair of bits from 'input1' and
+// 'input2' and returns the result as a new array. If inputs differ in size,
+// the tail of the longer one is ignored.
+pub fn bf_xor(input1 BitField, input2 BitField) BitField {
 	size := min(input1.size, input2.size)
 	bitnslots := bitnslots(size)
 	mut output := new(size)
-	mut i := 0
-	for i < bitnslots {
+	for i in 0..bitnslots {
 		output.field[i] = input1.field[i] ^ input2.field[i]
-		i++
 	}
-	cleartail(mut output)
+	output.clear_tail()
 	return output
 }
 
-// join() concatenates two bit arrays and return the result as a new array.
-
+// join concatenates two bit arrays and return the result as a new array.
 pub fn join(input1 BitField, input2 BitField) BitField {
 	output_size := input1.size + input2.size
 	mut output := new(output_size)
@@ -256,8 +191,8 @@ pub fn join(input1 BitField, input2 BitField) BitField {
 	}
 
 	// find offset bit and offset slot
-	offset_bit := input1.size % SLOT_SIZE
-	offset_slot := input1.size / SLOT_SIZE
+	offset_bit := input1.size % slot_size
+	offset_slot := input1.size / slot_size
 
 	for i in 0..bitnslots(input2.size) {
 		output.field[i + offset_slot] |=
@@ -277,75 +212,53 @@ pub fn join(input1 BitField, input2 BitField) BitField {
 	 * input.
 	 * If offset_bit is zero, no additional copies needed.
 	 */
-	if (output_size - 1) % SLOT_SIZE < (input2.size - 1) % SLOT_SIZE {
+	if (output_size - 1) % slot_size < (input2.size - 1) % slot_size {
 		for i in 0..bitnslots(input2.size) {
 			output.field[i + offset_slot + 1] |=
-			    u32(input2.field[i] >> u32(SLOT_SIZE - offset_bit))
+			    u32(input2.field[i] >> u32(slot_size - offset_bit))
 		}
-	} else if (output_size - 1) % SLOT_SIZE > (input2.size - 1) % SLOT_SIZE {
+	} else if (output_size - 1) % slot_size > (input2.size - 1) % slot_size {
 		for i in 0..bitnslots(input2.size) - 1 {
 			output.field[i + offset_slot + 1] |=
-			    u32(input2.field[i] >> u32(SLOT_SIZE - offset_bit))
+			    u32(input2.field[i] >> u32(slot_size - offset_bit))
 		}
 	}
 	return output
 }
 
-// print(instance BitField) send the content of a bit array to stdout as a
-// string of characters ('0' and '1').
-
-pub fn print(instance BitField) {
-	mut i := 0
-	for i < instance.size {
-		if instance.getbit(i) == 1 {
-			print('1')
-		}
-		else {
-			print('0')
-		}
-		i++
-	}
-}
-
-// getsize() returns the number of bits the array can hold
-
-pub fn (instance BitField) getsize() int {
+// get_size returns the number of bits the array can hold.
+pub fn (instance BitField) get_size() int {
 	return instance.size
 }
 
-// clone() create a copy of a bit array
-
-pub fn clone(input BitField) BitField {
-	bitnslots := bitnslots(input.size)
-	mut output := new(input.size)
-	mut i := 0
-	for i < bitnslots {
-		output.field[i] = input.field[i]
-		i++
+// clone creates a copy of a bit array.
+pub fn (instance BitField) clone() BitField {
+	bitnslots := bitnslots(instance.size)
+	mut output := new(instance.size)
+	for i in 0..bitnslots {
+		output.field[i] = instance.field[i]
 	}
 	return output
 }
 
-// cmp() compare two bit arrays bit by bit and return 'true' if they are
+// cmp compares two bit arrays bit by bit and returns 'true' if they are
 // identical by length and contents and 'false' otherwise.
-
-pub fn cmp(input1 BitField, input2 BitField) bool {
-	if input1.size != input2.size {return false}
-	for i in 0..bitnslots(input1.size) {
-		if input1.field[i] != input2.field[i] {return false}
+pub fn (instance BitField) cmp(input BitField) bool {
+	if instance.size != input.size {return false}
+	for i in 0..bitnslots(instance.size) {
+		if instance.field[i] != input.field[i] {return false}
 	}
 	return true
 }
 
-// popcount() returns the number of set bits (ones) in the array
-
-pub fn (instance BitField) popcount() int {
+// pop_count returns the number of set bits (ones) in the array.
+pub fn (instance BitField) pop_count() int {
 	size := instance.size
 	bitnslots := bitnslots(size)
-	tail := size % SLOT_SIZE
+	tail := size % slot_size
 	mut count := 0
 	for i in 0..bitnslots - 1 {
-		for j in 0..SLOT_SIZE {
+		for j in 0..slot_size {
 			if u32(instance.field[i] >> u32(j)) & u32(1) == u32(1) {
 				count++
 			}
@@ -359,16 +272,14 @@ pub fn (instance BitField) popcount() int {
 	return count
 }
 
-// hamming () compute the Hamming distance between two bit arrays.
-
-pub fn hamming (input1 BitField, input2 BitField) int {
-	input_xored := bfxor(input1, input2)
-	return input_xored.popcount()
+// hamming computes the Hamming distance between two bit arrays.
+pub fn hamming(input1 BitField, input2 BitField) int {
+	input_xored := bf_xor(input1, input2)
+	return input_xored.pop_count()
 }
 
-// pos() checks if the array contains a sub-array 'needle' and returns its
+// pos checks if the array contains a sub-array 'needle' and returns its
 // position if it does, -1 if it does not, and -2 on error.
-
 pub fn (haystack BitField) pos(needle BitField) int {
 	heystack_size := haystack.size
 	needle_size := needle.size
@@ -380,7 +291,7 @@ pub fn (haystack BitField) pos(needle BitField) int {
 	}
 	for i := 0; i <= diff; i++ {
 		needle_candidate := haystack.slice(i, needle_size + i)
-		if cmp(needle_candidate, needle) {
+		if needle_candidate.cmp(needle) {
 			// needle matches a sub-array of haystack; return starting position of the sub-array
 			return i
 		}
@@ -389,9 +300,8 @@ pub fn (haystack BitField) pos(needle BitField) int {
 	return -1
 }
 
-// slice() return a sub-array of bits between 'start_bit_nr' (included) and
-// 'end_bit_nr' (excluded)
-
+// slice returns a sub-array of bits between 'start_bit_nr' (included) and
+// 'end_bit_nr' (excluded).
 pub fn (input BitField) slice(_start int, _end int) BitField {
 	// boundary checks
 	mut start := _start
@@ -404,10 +314,10 @@ pub fn (input BitField) slice(_start int, _end int) BitField {
 	}
 
 	mut output := new(end - start)
-	start_offset := start % SLOT_SIZE
-	end_offset := (end - 1) % SLOT_SIZE
-	start_slot := start / SLOT_SIZE
-	end_slot := (end - 1) / SLOT_SIZE
+	start_offset := start % slot_size
+	end_offset := (end - 1) % slot_size
+	start_slot := start / slot_size
+	end_slot := (end - 1) / slot_size
 	output_slots := bitnslots(end - start)
 
 	if output_slots > 1 {
@@ -417,7 +327,7 @@ pub fn (input BitField) slice(_start int, _end int) BitField {
 				    u32(input.field[start_slot + i] >> u32(start_offset))
 				output.field[i] = output.field[i] |
 				    u32(input.field[start_slot + i + 1] <<
-				    u32(SLOT_SIZE - start_offset))
+				    u32(slot_size - start_offset))
 			}
 		}
 		else {
@@ -429,59 +339,58 @@ pub fn (input BitField) slice(_start int, _end int) BitField {
 	}
 
 	if start_offset > end_offset {
-		output.field[(end - start - 1) / SLOT_SIZE] =
+		output.field[(end - start - 1) / slot_size] =
 		    u32(input.field[end_slot - 1] >> u32(start_offset))
 		mut mask := u32((1 << (end_offset + 1)) - 1)
 		mask = input.field[end_slot] & mask
-		mask = u32(mask << u32(SLOT_SIZE - start_offset))
-		output.field[(end - start - 1) / SLOT_SIZE] |= mask
+		mask = u32(mask << u32(slot_size - start_offset))
+		output.field[(end - start - 1) / slot_size] |= mask
 	}
 	else if start_offset == 0 {
 		mut mask := u32(0)
-		if end_offset == SLOT_SIZE - 1 {
+		if end_offset == slot_size - 1 {
 			mask = u32(-1)
 		}
 		else {
 			mask = u32(u32(1) << u32(end_offset + 1))
 			mask = mask - u32(1)
 		}
-		output.field[(end - start - 1) / SLOT_SIZE] =
+		output.field[(end - start - 1) / slot_size] =
 		    (input.field[end_slot] & mask)
 	}
 	else {
 		mut mask := u32(((1 << (end_offset - start_offset + 1)) - 1)  << start_offset)
 		mask = input.field[end_slot] & mask
 		mask = u32(mask >> u32(start_offset))
-		output.field[(end - start - 1) / SLOT_SIZE] |= mask
+		output.field[(end - start - 1) / slot_size] |= mask
 	}
 	return output
 }
 
-// reverse() reverses the order of bits in the array (swap the first with the
-// last, the second with the last but one and so on)
-
+// reverse reverses the order of bits in the array (swap the first with the
+// last, the second with the last but one and so on).
 pub fn (instance BitField) reverse() BitField {
 	size := instance.size
 	bitnslots := bitnslots(size)
 	mut output := new(size)
 	for i:= 0; i < (bitnslots - 1); i++ {
-		for j in 0..SLOT_SIZE {
+		for j in 0..slot_size {
 			if u32(instance.field[i] >> u32(j)) & u32(1) == u32(1) {
-				bitset(mut output, size - i * SLOT_SIZE - j - 1)
+				output.set_bit(size - i * slot_size - j - 1)
 			}
 		}
 	}
-	bits_in_last_input_slot := (size - 1) % SLOT_SIZE + 1
+	bits_in_last_input_slot := (size - 1) % slot_size + 1
 	for j in 0..bits_in_last_input_slot {
 		if u32(instance.field[bitnslots - 1] >> u32(j)) & u32(1) == u32(1) {
-			bitset(mut output, bits_in_last_input_slot - j - 1)
+			output.set_bit(bits_in_last_input_slot - j - 1)
 		}
 	}
 	return output
 }
 
-// resize changes the size of the bit array to 'new_size'
-pub fn (instance mut BitField) resize(new_size int) {
+// resize changes the size of the bit array to 'new_size'.
+pub fn (mut instance BitField) resize(new_size int) {
 	new_bitnslots := bitnslots(new_size)
 	old_size := instance.size
 	old_bitnslots := bitnslots(old_size)
@@ -491,14 +400,13 @@ pub fn (instance mut BitField) resize(new_size int) {
 	}
 	instance.field = field.clone()
 	instance.size = new_size
-	if new_size < old_size && new_size % SLOT_SIZE != 0 {
-		cleartail(mut instance)
+	if new_size < old_size && new_size % slot_size != 0 {
+		instance.clear_tail()
 	}
 }
 
-// rotate(offset int) circular-shift the bits by 'offset' positions (move
-// 'offset' bit to 0, 'offset+1' bit to 1, and so on)
-
+// rotate circular-shifts the bits by 'offset' positions (move
+// 'offset' bit to 0, 'offset+1' bit to 1, and so on).
 pub fn (instance BitField) rotate(offset int) BitField {
 	/**
 	 * This function "cuts" the bitfield into two and swaps them.
@@ -509,7 +417,7 @@ pub fn (instance BitField) rotate(offset int) BitField {
 	// removing extra rotations
 
 	mut offset_internal := offset % size
-	if (offset_internal == 0) {
+	if offset_internal == 0 {
 		// nothing to shift
 		return instance
 	}
@@ -521,4 +429,37 @@ pub fn (instance BitField) rotate(offset int) BitField {
 	second_chunk := instance.slice(offset_internal, size)
 	output := join(second_chunk, first_chunk)
 	return output
+}
+
+// Internal functions
+
+fn (mut instance BitField) clear_tail() {
+	tail := instance.size % slot_size
+	if tail != 0 {
+		// create a mask for the tail
+		mask := u32((1 << tail) - 1)
+		// clear the extra bits
+		instance.field[bitnslots(instance.size) - 1] = instance.field[bitnslots(instance.size) - 1] & mask
+	}
+}
+
+fn bitmask(bitnr int) u32 {
+	return u32(u32(1) << u32(bitnr % slot_size))
+}
+
+fn bitslot(size int) int {
+	return size / slot_size
+}
+
+fn min(input1 int, input2 int) int {
+	if input1 < input2 {
+		return input1
+	}
+	else {
+		return input2
+	}
+}
+
+fn bitnslots(length int) int {
+	return (length - 1) / slot_size + 1
 }

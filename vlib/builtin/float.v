@@ -2,16 +2,25 @@
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 module builtin
+
 import strconv.ftoa
 
 #include <float.h>
-
 // ----- f64 to string functions -----
-
-// str return a f64 as string in scientific notation, auto display digits limit
+// str return a f64 as string in suitable notation
 [inline]
-pub fn (d f64) str() string {
-	return ftoa.ftoa_64(d)
+pub fn (x f64) str() string {
+	abs_x := f64_abs(x)
+	if abs_x >= 0.0001 && abs_x < 1.0e6 {
+		return ftoa.f64_to_str_l(x)
+	} else {
+		return ftoa.ftoa_64(x)
+	}
+}
+
+[inline]
+pub fn (d any_float) str() string {
+	return f64(d).str()
 }
 
 // return a string of the input f64 in scientific notation with digit_num deciamals displayed, max 17 digits
@@ -23,7 +32,7 @@ pub fn (x f64) strsci(digit_num int) string {
 	} else if n_digit > 17 {
 		n_digit = 17
 	}
-	return ftoa.f64_to_str(x,n_digit)
+	return ftoa.f64_to_str(x, n_digit)
 }
 
 // return a decimal notation of the input f64
@@ -33,11 +42,15 @@ pub fn (x f64) strlong() string {
 }
 
 // ----- f32 to string functions -----
-
-// str return a f32 as string in scientific notation, auto display digits limit
+// str return a f32 as string in suitable notation
 [inline]
-pub fn (d f32) str() string {
-	return ftoa.ftoa_32(d)
+pub fn (x f32) str() string {
+	abs_x := f32_abs(x)
+	if abs_x >= 0.0001 && abs_x < 1.0e6 {
+		return ftoa.f32_to_str_l(x)
+	} else {
+		return ftoa.ftoa_32(x)
+	}
 }
 
 // return a string of the input f32 in scientific notation with digit_num deciamals displayed, max 8 digits
@@ -49,7 +62,7 @@ pub fn (x f32) strsci(digit_num int) string {
 	} else if n_digit > 8 {
 		n_digit = 8
 	}
-	return ftoa.f32_to_str(x,n_digit)
+	return ftoa.f32_to_str(x, n_digit)
 }
 
 // return a decimal notation of the input f32
@@ -59,120 +72,79 @@ pub fn (x f32) strlong() string {
 }
 
 // ----- C functions -----
-
 [inline]
-fn f32_abs(a f32) f32 {
-	return if a < 0 { -a } else { a }
+pub fn f32_abs(a f32) f32 {
+	return if a < 0 {
+		-a
+	} else {
+		a
+	}
 }
 
 [inline]
 fn f64_abs(a f64) f64 {
-	return if a < 0 { -a } else { a }
+	return if a < 0 {
+		-a
+	} else {
+		a
+	}
 }
 
-// compare floats using C epsilon
-// ==
 
 [inline]
-pub fn (a f64) eq(b f64) bool {
-	return f64_abs(a - b) <= C.DBL_EPSILON
+pub fn f32_max(a, b f32) f32 {
+	return if a > b {
+		a
+	} else {
+		b
+	}
 }
 
 [inline]
-pub fn (a f32) eq(b f32) bool {
-	return f32_abs(a - b) <= C.FLT_EPSILON
+pub fn f32_min(a, b f32) f32 {
+	return if a < b {
+		a
+	} else {
+		b
+	}
 }
 
-pub fn (a f64) eqbit(b f64) bool {
-	return C.DEFAULT_EQUAL(a, b)
+[inline]
+pub fn f64_max(a, b f64) f64 {
+	return if a > b {
+		a
+	} else {
+		b
+	}
 }
 
-pub fn (a f32) eqbit(b f32) bool {
-	return C.DEFAULT_EQUAL(a, b)
+[inline]
+fn f64_min(a, b f64) f64 {
+	return if a < b {
+		a
+	} else {
+		b
+	}
 }
 
-// !=
-fn (a f64) ne(b f64) bool {
-	return !a.eq(b)
+[inline]
+pub fn (a f32) eq_epsilon(b f32) bool {
+	hi := f32_max(f32_abs(a), f32_abs(b))
+	delta := f32_abs(a - b)
+	if hi > f32(1.0) {
+		return delta <= hi * (4 * f32(C.FLT_EPSILON))
+	} else {
+		return (1 / (4 * f32(C.FLT_EPSILON))) * delta <= hi
+	}
 }
 
-fn (a f32) ne(b f32) bool {
-	return !a.eq(b)
+[inline]
+pub fn (a f64) eq_epsilon(b f64) bool {
+	hi := f64_max(f64_abs(a), f64_abs(b))
+	delta := f64_abs(a - b)
+	if hi > 1.0 {
+		return delta <= hi * (4 * f64(C.DBL_EPSILON))
+	} else {
+		return (1 / (4 * f64(C.DBL_EPSILON))) * delta <= hi
+	}
 }
-
-pub fn (a f64) nebit(b f64) bool {
-	return C.DEFAULT_NOT_EQUAL(a, b)
-}
-
-pub fn (a f32) nebit(b f32) bool {
-	return C.DEFAULT_NOT_EQUAL(a, b)
-}
-
-// a < b
-fn (a f64) lt(b f64) bool {
-	return a.ne(b) && a.ltbit(b)
-}
-
-fn (a f32) lt(b f32) bool {
-	return a.ne(b) && a.ltbit(b)
-}
-
-fn (a f64) ltbit(b f64) bool {
-	return C.DEFAULT_LT(a, b)
-}
-
-fn (a f32) ltbit(b f32) bool {
-	return C.DEFAULT_LT(a, b)
-}
-
-// a <= b
-fn (a f64) le(b f64) bool {
-	return !a.gt(b)
-}
-
-fn (a f32) le(b f32) bool {
-	return !a.gt(b)
-}
-
-fn (a f64) lebit(b f64) bool {
-	return C.DEFAULT_LE(a, b)
-}
-
-fn (a f32) lebit(b f32) bool {
-	return C.DEFAULT_LE(a, b)
-}
-
-// a > b
-fn (a f64) gt(b f64) bool {
-	return a.ne(b) && a.gtbit(b)
-}
-
-fn (a f32) gt(b f32) bool {
-	return a.ne(b) && a.gtbit(b)
-}
-
-fn (a f64) gtbit(b f64) bool {
-	return C.DEFAULT_GT(a, b)
-}
-
-fn (a f32) gtbit(b f32) bool {
-	return C.DEFAULT_GT(a, b)
-}
-
-// a >= b
-fn (a f64) ge(b f64) bool {
-	return !a.lt(b)
-}
-
-fn (a f32) ge(b f32) bool {
-	return !a.lt(b)
-}
-
-fn (a f64) gebit(b f64) bool {
-	return C.DEFAULT_GE(a, b)
-}
-
-fn (a f32) gebit(b f32) bool {
-	return C.DEFAULT_GE(a, b)
-}
-

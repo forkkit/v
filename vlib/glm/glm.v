@@ -65,7 +65,7 @@ pub fn (m Mat4) str() string {
 		}
 		for j in 0..4 {
 			val := m.data[i * 4 + j]
-			s += '${val:.2f} '
+			s += '${val:5.2f} '
 		}
 		if i != 3 {
 			s += '\n'
@@ -77,8 +77,8 @@ pub fn (m Mat4) str() string {
 
 fn vec2(x, y int) Vec2 {
 	res := Vec2 {
-		x: x,
-		y: y,
+		x: f32(x),
+		y: f32(y),
 	}
 	return res
 }
@@ -131,7 +131,7 @@ fn rotate(m Mat4, angle f32, vec Vec3) Mat4 {
 */
 
 fn f32_calloc(n int) &f32 {
-	return &f32(vcalloc(n * sizeof(f32)))
+	return voidptr(vcalloc(n * int(sizeof(f32))))
 }
 // fn translate(vec Vec3) *f32 {
 pub fn translate(m Mat4, v Vec3) Mat4 {
@@ -141,9 +141,9 @@ pub fn translate(m Mat4, v Vec3) Mat4 {
 	x := v.x
 	y := v.y
 	z := v.z
-	a00 := a[0]a01 := a[1]a02 := a[2]a03 := a[3]
-	a10 := a[4]a11 := a[5]a12 := a[6]a13 := a[7]
-	a20 := a[8]a21 := a[9]a22 := a[10]a23 := a[11]
+	a00 := a[0] a01 := a[1] a02 := a[2]  a03 := a[3]
+	a10 := a[4] a11 := a[5] a12 := a[6]  a13 := a[7]
+	a20 := a[8] a21 := a[9] a22 := a[10] a23 := a[11]
 	out[0] = a00 out[1] = a01 out[2] = a02 out[3] = a03
 	out[4] = a10 out[5] = a11 out[6] = a12 out[7] = a13
 	out[8] = a20 out[9] = a21 out[10] = a22 out[11] = a23
@@ -175,6 +175,22 @@ pub fn ortho(left, right, bottom, top f32) Mat4 {
 	return mat4(res)
 }
 
+// https://github.com/g-truc/glm/blob/0ceb2b755fb155d593854aefe3e45d416ce153a4/glm/ext/matrix_clip_space.inl
+pub fn ortho_zo(left, right, bottom, top, zNear, zFar f32) Mat4 {
+	//println('glm ortho($left, $right, $bottom, $top)')
+	// mat<4, 4, T, defaultp> Result(static_cast<T>(1));
+	n := 16
+	mut res := f32_calloc(n)
+	res[0] = 2.0 / (right - left)
+	res[5] = 2.0 / (top - bottom)
+	res[10] = 1.0
+	res[12] = - (right + left) / (right - left)
+	res[13] = - (top + bottom) / (top - bottom)
+	res[14] = - zNear / (zFar - zNear)
+	res[15] = 1.0
+	return mat4(res)
+}
+
 // fn scale(a *f32, v Vec3) *f32 {
 pub fn scale(m Mat4, v Vec3) Mat4 {
 	a := m.data
@@ -201,12 +217,76 @@ pub fn scale(m Mat4, v Vec3) Mat4 {
 	return mat4(out)
 }
 
+// multiplicates two matrices
+pub fn mult(a, b Mat4) Mat4 {
+	mut out := f32_calloc(16)
+	for i in 0..4 {
+		for r in 0..4 {
+			mut prod := f32(0)
+			for c in 0..4 {
+				prod += a.data[c*4+r] * b.data[i*4+c]
+			}
+			out[i*4+r] = prod
+		}
+	}
+	return mat4(out)
+}
+
+pub fn rotate(angle f32, axis Vec3, src Mat4) Mat4 {
+	c := f32(math.cos(angle))
+	s := f32(math.sin(angle))
+	oneminusc := f32(1.0) - c
+
+	xy := axis.x * axis.y
+	yz := axis.y * axis.z
+	xz := axis.x * axis.z
+	xs := axis.x * s
+	ys := axis.y * s
+	zs := axis.z * s
+
+	f00 := axis.x * axis.x * oneminusc + c
+	f01 := xy * oneminusc + zs
+	f02 := xz * oneminusc - ys
+
+	f10 := xy * oneminusc-zs
+	f11 := axis.y * axis.y * oneminusc + c
+	f12 := yz * oneminusc + xs
+
+	f20 := xz * oneminusc + ys
+	f21 := yz * oneminusc - xs
+	f22 := axis.z  *axis.z * oneminusc + c
+
+	data := src.data
+
+	t00 := data[0] * f00 + data[4] * f01 + data[8] * f02
+	t01 := data[1] * f00 + data[5] * f01 + data[9] * f02
+	t02 := data[2] * f00 + data[6] * f01 + data[10] * f02
+	t03 := data[3] * f00 + data[7] * f01 + data[11] * f02
+
+	t10 := data[0] * f10 + data[4] * f11 + data[8] * f12
+	t11 := data[1] * f10 + data[5] * f11 + data[9] * f12
+	t12 := data[2] * f10 + data[6] * f11 + data[10] * f12
+	t13 := data[3] * f10 + data[7] * f11 + data[11] * f12
+
+	mut dest := src.data
+
+	dest[8] = data[0] * f20 + data[4] * f21 + data[8] * f22
+	dest[9] = data[1] * f20 + data[5] * f21 + data[9] * f22
+	dest[10] = data[2] * f20 + data[6] * f21 + data[10] * f22
+	dest[11] = data[3] * f20 + data[7] * f21 + data[11] * f22
+
+	dest[0] = t00	dest[1] = t01	dest[2] = t02	dest[3] = t03
+	dest[4] = t10	dest[5] = t11	dest[6] = t12	dest[7] = t13
+
+	return mat4(dest)
+}
+
 // fn rotate_z(a *f32, rad f32) *f32 {
 pub fn rotate_z(m Mat4, rad f32) Mat4 {
 	a := m.data
 	mut out := f32_calloc(16)
-	s := math.sin(rad)
-	c := math.cos(rad)
+	s := f32(math.sin(rad))
+	c := f32(math.cos(rad))
 	a00 := a[0]
 	a01 := a[1]
 	a02 := a[2]
@@ -241,7 +321,7 @@ pub fn identity() Mat4 {
 	// 0 0 1 0
 	// 0 0 0 1
 	n := 16
-	mut res := f32_calloc(sizeof(f32) * n)
+	mut res := f32_calloc(int(sizeof(f32)) * n)
 	res[0] = 1
 	res[5] = 1
 	res[10] = 1
@@ -250,7 +330,7 @@ pub fn identity() Mat4 {
 }
 
 // returns *f32 without allocation
-pub fn identity2(res mut &f32) {
+pub fn identity2(mut res &f32) {
 	res[0] = 1
 	res[5] = 1
 	res[10] = 1
@@ -262,11 +342,11 @@ pub fn identity2(res mut &f32) {
 }
 
 pub fn identity3() []f32 {
-	res := [1.0, 0, 0, 0,
+	res := [f32(1.0), 0, 0, 0,
 	0, 1, 0, 0,
 	0, 0, 1, 0,
 	0, 0, 0, 1,
-	] !
+	]
 	return res
 }
 
@@ -276,9 +356,9 @@ fn ortho_js(left, right, bottom, top f32) &f32 {
 //	myfar := 1
 	lr := 1.0 / (left - right)
 	bt := 1.0 / (bottom - top)
-	nf := 1.0 / 1.0// (mynear -myfar)
+	nf := f32(1.0) / 1.0// (mynear -myfar)
 	mut out := &f32(0)
-	unsafe { out = &f32( malloc (sizeof(f32) * 16)) }
+	unsafe { out = &f32( malloc (int(sizeof(f32) * 16))) }
 	out[0] = -2.0 * lr
 	out[1] = 0
 	out[2] = 0

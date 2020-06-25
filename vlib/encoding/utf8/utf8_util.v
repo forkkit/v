@@ -1,21 +1,21 @@
-/**********************************************************************
-*
-* utf-8 util
-*
-* Copyright (c) 2019 Dario Deledda. All rights reserved.
-* Use of this source code is governed by an MIT license
-* that can be found in the LICENSE file.
-*
-* This file contains utilities for utf8 strings
-*
-**********************************************************************/
+/*
+
+utf-8 util
+
+Copyright (c) 2019 Dario Deledda. All rights reserved.
+Use of this source code is governed by an MIT license
+that can be found in the LICENSE file.
+
+This file contains utilities for utf8 strings
+
+*/
 module utf8
 
-/**********************************************************************
-*
-* Utility functions
-*
-**********************************************************************/
+/*
+
+Utility functions
+
+*/
 
 // len return the leght as number of unicode chars from a string
 pub fn len(s string) int {
@@ -81,11 +81,11 @@ pub fn get_uchar(s string, index int) int {
 }
 
 
-/**********************************************************************
-*
-* Conversion functions
-*
-**********************************************************************/
+/*
+
+Conversion functions
+
+*/
 
 // to_upper return an uppercase string from a string
 pub fn to_upper(s string) string {
@@ -110,14 +110,14 @@ pub fn u_to_lower(s ustring) ustring {
 }
 
 
-/**********************************************************************
-*
-* Punctuation functions
-*
-* The "western" function search on a small table, that is quicker than
-* the global unicode table search. **Use only for western chars**.
-*
-**********************************************************************/
+/*
+
+Punctuation functions
+
+The "western" function search on a small table, that is quicker than
+the global unicode table search. **Use only for western chars**.
+
+*/
 
 //
 // Western
@@ -148,11 +148,11 @@ pub fn is_uchar_global_punct( uchar int ) bool {
 }
 
 
-/**********************************************************************
-*
-* Private functions
-*
-**********************************************************************/
+/*
+
+Private functions
+
+*/
 // utf8util_char_len calculate the length in bytes of a utf8 char
 fn utf8util_char_len(b byte) int {
 	return (( 0xe5000000 >> (( b >> 3 ) & 0x1e )) & 3 ) + 1
@@ -164,27 +164,27 @@ fn utf8util_char_len(b byte) int {
 //
 // up_low make the dirt job
 fn up_low(s string, upper_flag bool) string {
-	mut _index := 0
+	mut index := 0
 	mut str_res := malloc(s.len + 1)
 
 	for {
-		ch_len := utf8util_char_len(s.str[_index])
+		ch_len := utf8util_char_len(s.str[index])
 
 		if ch_len == 1 {
 			if upper_flag==true {
-				str_res[_index] = C.toupper(s.str[_index])
+				str_res[index] = byte(C.toupper(s.str[index]))
 			}else{
-				str_res[_index] = C.tolower(s.str[_index])
+				str_res[index] = byte(C.tolower(s.str[index]))
 			}
 		}
 		else if ch_len > 1 && ch_len < 5{
 			mut lword := 0
 
 			for i:=0; i < ch_len ; i++ {
-				lword = (lword << 8 ) | int( s.str[_index + i] )
+				lword = (lword << 8 ) | int( s.str[index + i] )
 			}
 
-			//C.printf(" #%d (%x) ", _index, lword)
+			//C.printf(" #%d (%x) ", index, lword)
 
 			mut res := 0
 
@@ -215,7 +215,7 @@ fn up_low(s string, upper_flag bool) string {
 			// char not in table, no need of conversion
 			if ch_index == 0 {
 				for i in 0..ch_len {
-					str_res[_index + i] = s.str[_index + i]
+					str_res[index + i] = s.str[index + i]
 				}
 				//C.printf("\n")
 			}else{
@@ -227,13 +227,13 @@ fn up_low(s string, upper_flag bool) string {
 					ch1 := byte( (tab_char >> 0) & 0x3f ) | 0x80		/*10xx xxxx*/
 					//C.printf("[%02x%02x] \n",ch0,ch1)
 
-					str_res[ _index + 0 ] = ch0
-					str_res[ _index + 1 ] = ch1
+					str_res[ index + 0 ] = ch0
+					str_res[ index + 1 ] = ch1
 
 					//****************************************************************
 					//  BUG: doesn't compile, workaround use shitf to right of 0 bit
 					//****************************************************************
-					//str_res[_index + 1 ] = byte( tab_char & 0xbf )			/*1011 1111*/
+					//str_res[index + 1 ] = byte( tab_char & 0xbf )			/*1011 1111*/
 
 				}
 				else if ch_len == 3 {
@@ -242,16 +242,16 @@ fn up_low(s string, upper_flag bool) string {
 					ch2 := byte( (tab_char >> 0) & 0x3f ) | 0x80		/*10xx xxxx*/
 					//C.printf("[%02x%02x%02x] \n",ch0,ch1,ch2)
 
-					str_res[_index + 0 ] = ch0
-					str_res[_index + 1 ] = ch1
-					str_res[_index + 2 ] = ch2
+					str_res[index + 0 ] = ch0
+					str_res[index + 1 ] = ch1
+					str_res[index + 2 ] = ch2
 				}
 				// TODO: write if needed
 				else if ch_len == 4 {
 					// place holder!!
 					// at the present time simply copy the utf8 char
 					for i in 0..ch_len {
-						str_res[_index + i] = s.str[_index + i]
+						str_res[index + i] = s.str[index + i]
 					}
 				}
 			}
@@ -260,20 +260,20 @@ fn up_low(s string, upper_flag bool) string {
 		// other cases, just copy the string
 		else{
 			for i in 0..ch_len {
-				str_res[_index + i] = s.str[_index + i]
+				str_res[index + i] = s.str[index + i]
 			}
 		}
 
-		_index += ch_len
+		index += ch_len
 
 		// we are done, exit the loop
-		if _index >= s.len {
+		if index >= s.len {
 			break
 		}
 	}
 
 	// for c compatibility set the ending 0
-	str_res[_index]=0
+	str_res[index]=0
 
 	//C.printf("str_res: %s\n--------------\n",str_res)
 
@@ -357,20 +357,20 @@ fn find_punct_in_table( in_code int , in_table []int ) int {
 }
 
 
-/*****************************************************************************
-*
-*  universal character set 2 level 1 (UCS-2 level-1) between uppercase and lowercase
-*  [Lowercase code point,	Uppercase code point,	Lowercase character description,	Uppercase character description]
-*
-*  source: https://www.ibm.com/support/knowledgecenter/ssw_ibm_i_73/nls/rbagslowtoupmaptable.htm?view=embed
-*  term of use: https://www.ibm.com/legal?lnk=flg-tous-usen
-*  license: not stated, general fair use license applied
-*
-*  regex expresion => replace from html table to V :
-*  src: ([A-F\d]+)\s+([A-F\d]+)\s+(.*)
-*  dst: 0x$1, 0x$2, // $3
-*
-*****************************************************************************/
+/*
+
+universal character set 2 level 1 (UCS-2 level-1) between uppercase and lowercase
+[Lowercase code point,	Uppercase code point,	Lowercase character description,	Uppercase character description]
+
+source: https://www.ibm.com/support/knowledgecenter/ssw_ibm_i_73/nls/rbagslowtoupmaptable.htm?view=embed
+term of use: https://www.ibm.com/legal?lnk=flg-tous-usen
+license: not stated, general fair use license applied
+
+regex expresion => replace from html table to V :
+src: ([A-F\d]+)\s+([A-F\d]+)\s+(.*)
+dst: 0x$1, 0x$2, // $3
+
+*/
 
 const(
 
@@ -1047,13 +1047,13 @@ u16(0x0041), 0x0061, //LATIN CAPITAL LETTER A	LATIN SMALL LETTER A
 ]
 )
 
-/*****************************************************************************
-*
-*  Unicode punctuation chars
-*
-*  source: http://www.unicode.org/faq/punctuation_symbols.html
-*
-*****************************************************************************/
+/*
+
+Unicode punctuation chars
+
+source: http://www.unicode.org/faq/punctuation_symbols.html
+
+*/
 const(
 
 // Western punctuation mark
@@ -1680,6 +1680,6 @@ unicode_punct=[
 0x1DA8A, // SIGNWRITING COLON	𝪊
 0x1DA8B, // SIGNWRITING PARENTHESIS	𝪋
 0x1E95E, // ADLAM INITIAL EXCLAMATION MARK	𞥞
-0x1E95F, // ADLAM INITIAL QUESTION MARK	
+0x1E95F, // ADLAM INITIAL QUESTION MARK
 ]
 )

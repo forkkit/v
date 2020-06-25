@@ -12,17 +12,16 @@
 // --log-to    either 'file' or 'terminal'
 // --log-file  path to log file used when --log-to is 'file'
 // --dry-run   dont push anything to remote repo
+// --force     force update even if already up to date
 
 module main
 
-import (
-	os
-	log
-	flag
-	time
-	vweb
-	net.urllib
-)
+import os
+import log
+import flag
+import time
+import vweb
+import net.urllib
 
 // git credentials
 const(
@@ -45,7 +44,7 @@ const(
 	// name
 	app_name = 'gen_vc'
 	// version
-	app_version = '0.1.1'
+	app_version = '0.1.2'
 	// description
 	app_description = 'This tool regenerates V\'s bootstrap .c files every time the V master branch is updated.'
 	// assume something went wrong if file size less than this
@@ -81,16 +80,16 @@ const(
 
 struct GenVC {
 	// logger
-	logger &log.Log
 	// flag options
 	options FlagOptions
 mut:
+	logger &log.Log
 	// true if error was experienced running generate
 	gen_error bool
 }
 
 // webhook server
-pub struct WebhookServer {
+struct WebhookServer {
 pub mut:
 	vweb   vweb.Context
 	gen_vc &GenVC
@@ -105,20 +104,21 @@ struct FlagOptions {
 	log_to   string
 	log_file string
 	dry_run  bool
+	force    bool
 }
 
 fn main() {
 	mut fp := flag.new_flag_parser(os.args.clone())
 
 	fp.application(app_name)
- 	fp.version(app_version)
- 	fp.description(app_description)
- 	fp.skip_executable()
+	fp.version(app_version)
+	fp.description(app_description)
+	fp.skip_executable()
 
-	show_help:=fp.bool('help', false, 'Show this help screen\n')
+	show_help:=fp.bool('help', 0, false, 'Show this help screen\n')
 	flag_options := parse_flags(mut fp)
 
-	if( show_help ){ println( fp.usage() ) exit(0) }
+	if show_help { println( fp.usage() ) exit(0) }
 
 	fp.finalize() or {
  		eprintln(err)
@@ -141,7 +141,7 @@ fn main() {
 // new GenVC
 fn new_gen_vc(flag_options FlagOptions) &GenVC {
 	mut logger := &log.Log{}
-	logger.set_level(log.DEBUG)
+	logger.set_level(.debug)
 	if flag_options.log_to == 'file' {
 		logger.set_full_logpath( flag_options.log_file )
 	}
@@ -152,8 +152,7 @@ fn new_gen_vc(flag_options FlagOptions) &GenVC {
 }
 
 // WebhookServer init
-pub fn (ws mut WebhookServer) init() {
-
+pub fn (mut ws WebhookServer) init_once() {
 	mut fp := flag.new_flag_parser(os.args.clone())
 	flag_options := parse_flags(mut fp)
 	ws.gen_vc = new_gen_vc(flag_options)
@@ -161,8 +160,16 @@ pub fn (ws mut WebhookServer) init() {
 	//ws.gen_vc = new_gen_vc(flag_options)
 }
 
+pub fn (mut ws WebhookServer) init() {
+	//ws.init_once()
+}
+
 // gen webhook
-pub fn (ws mut WebhookServer) genhook() {
+pub fn (mut ws WebhookServer) genhook() {
+	// request data
+	// println(ws.vweb.req.data)
+	// TODO: parse request. json or urlencoded
+	// json.decode or net.urllib.parse
 	ws.gen_vc.generate()
 	// error in generate
 	if ws.gen_vc.gen_error {
@@ -177,20 +184,21 @@ pub fn (ws &WebhookServer) reset() {
 
 
 // parse flags to FlagOptions struct
-fn parse_flags(fp mut flag.FlagParser) FlagOptions {
+fn parse_flags(mut fp flag.FlagParser) FlagOptions {
 	return FlagOptions{
-		serve    : fp.bool('serve', false, 'run in webhook server mode')
-		work_dir : fp.string('work-dir', work_dir, 'gen_vc working directory')
-		purge    : fp.bool('purge', false, 'force purge the local repositories')
-		port     : fp.int('port', server_port, 'port for web server to listen on')
-		log_to   : fp.string('log-to', log_to, 'log to is \'file\' or \'terminal\'')
-		log_file : fp.string('log-file', log_file, 'log file to use when log-to is \'file\'')
-		dry_run  : fp.bool('dry-run', dry_run, 'when specified dont push anything to remote repo')
+		serve    : fp.bool('serve', 0, false, 'run in webhook server mode')
+		work_dir : fp.string('work-dir', 0, work_dir, 'gen_vc working directory')
+		purge    : fp.bool('purge', 0, false, 'force purge the local repositories')
+		port     : fp.int('port', 0, server_port, 'port for web server to listen on')
+		log_to   : fp.string('log-to', 0, log_to, 'log to is \'file\' or \'terminal\'')
+		log_file : fp.string('log-file', 0, log_file, 'log file to use when log-to is \'file\'')
+		dry_run  : fp.bool('dry-run', 0, dry_run, 'when specified dont push anything to remote repo')
+		force    : fp.bool('force', 0, false, 'force update even if already up to date')
 	}
 }
 
 // init
-fn (gen_vc mut GenVC) init() {
+fn (mut gen_vc GenVC) init() {
 	// purge repos if flag is passed
 	if gen_vc.options.purge {
 		gen_vc.purge_repos()
@@ -198,7 +206,7 @@ fn (gen_vc mut GenVC) init() {
 }
 
 // regenerate
-fn (gen_vc mut GenVC) generate() {
+fn (mut gen_vc GenVC) generate() {
 	// set errors to false
 	gen_vc.gen_error = false
 
@@ -226,7 +234,7 @@ fn (gen_vc mut GenVC) generate() {
 		// fetch the remote repo just in case there are newer commits there
 		gen_vc.cmd_exec('git -C $git_repo_dir_v fetch')
 		git_status := gen_vc.cmd_exec('git -C $git_repo_dir_v status')
-		if !git_status.contains('behind') {
+		if !git_status.contains('behind') && !gen_vc.options.force {
 			gen_vc.logger.warn('v repository is already up to date.')
 			return
 		}
@@ -265,7 +273,7 @@ fn (gen_vc mut GenVC) generate() {
 	last_commit_hash_v_short := last_commit_hash_v[..7]
 
 	// subject
-	last_commit_subject := git_log_v.find_between('Subject:', '\n').trim_space()
+	last_commit_subject := git_log_v.find_between('Subject:', '\n').trim_space().replace('"', '\\"')
 
 	// log some info
 	gen_vc.logger.debug('last commit time ($git_repo_v): ' + last_commit_time_v.format_ss())
@@ -274,7 +282,7 @@ fn (gen_vc mut GenVC) generate() {
 	gen_vc.logger.debug('last commit subject ($git_repo_v): $last_commit_subject')
 
 	// if vc repo already has a newer commit than the v repo, assume it's up to date
-	if t_unix_vc >= t_unix_v {
+	if t_unix_vc >= t_unix_v && !gen_vc.options.force {
 		gen_vc.logger.warn('vc repository is already up to date.')
 		return
 	}
@@ -288,7 +296,7 @@ fn (gen_vc mut GenVC) generate() {
 	// build v.c for each os
 	for os_name in vc_build_oses {
 		vc_suffix := if os_name == 'nix' { '' } else { '_${os_name[..3]}' }
-		v_flags := if os_name == 'nix' { '-output-cross-platform-c' } else { '-os $os_name' }
+		v_flags := if os_name == 'nix' { '-os cross' } else { '-os $os_name' }
 		c_file := 'v${vc_suffix}.c'
 		// try generate .c file
 		gen_vc.cmd_exec('$v_exec $v_flags -o $c_file $git_repo_dir_v/cmd/v')
@@ -296,8 +304,6 @@ fn (gen_vc mut GenVC) generate() {
 		gen_vc.assert_file_exists_and_is_not_too_short(c_file, err_msg_gen_c)
 		// embed the latest v commit hash into the c file
 		gen_vc.cmd_exec('sed -i \'1s/^/#define V_COMMIT_HASH "$last_commit_hash_v_short"\\n/\' $c_file')
-		// run clang-format to make the c file more readable
-		gen_vc.cmd_exec('clang-format -i $c_file')
 		// move to vc repo
 		gen_vc.cmd_exec('mv $c_file $git_repo_dir_vc/$c_file')
 		// add new .c file to local vc repo
@@ -317,17 +323,17 @@ fn (gen_vc mut GenVC) generate() {
 }
 
 // only execute when dry_run option is false, otherwise just log
-fn (gen_vc mut GenVC) cmd_exec_safe(cmd string) string {
+fn (mut gen_vc GenVC) cmd_exec_safe(cmd string) string {
 	return gen_vc.command_execute(cmd, gen_vc.options.dry_run)
 }
 
 // always execute command
-fn (gen_vc mut GenVC) cmd_exec(cmd string) string {
+fn (mut gen_vc GenVC) cmd_exec(cmd string) string {
 	return gen_vc.command_execute(cmd, false)
 }
 
 // execute command
-fn (gen_vc mut GenVC) command_execute(cmd string, dry bool) string {
+fn (mut gen_vc GenVC) command_execute(cmd string, dry bool) string {
 	// if dry is true then dont execute, just log
 	if dry {
 		return gen_vc.command_execute_dry(cmd)
@@ -353,13 +359,13 @@ fn (gen_vc mut GenVC) command_execute(cmd string, dry bool) string {
 }
 
 // just log cmd, dont execute
-fn (gen_vc mut GenVC) command_execute_dry(cmd string) string {
+fn (mut gen_vc GenVC) command_execute_dry(cmd string) string {
 	gen_vc.logger.info('cmd (dry): "$cmd"')
 	return ''
 }
 
 // delete repo directories
-fn (gen_vc mut GenVC) purge_repos() {
+fn (mut gen_vc GenVC) purge_repos() {
 	// delete old repos (better to be fully explicit here, since these are destructive operations)
 	mut repo_dir := '$gen_vc.options.work_dir/$git_repo_dir_v'
 	if os.is_dir(repo_dir) {
@@ -374,7 +380,7 @@ fn (gen_vc mut GenVC) purge_repos() {
 }
 
 // check if file size is too short
-fn (gen_vc mut GenVC) assert_file_exists_and_is_not_too_short(f string, emsg string){
+fn (mut gen_vc GenVC) assert_file_exists_and_is_not_too_short(f string, emsg string){
 	if !os.exists(f) {
 		gen_vc.logger.error('$err_msg_build: $emsg .')
 		gen_vc.gen_error = true

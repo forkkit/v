@@ -4,13 +4,90 @@
 
 V is a statically typed compiled programming language designed for building maintainable software.
 
-It's similar to Go and is also influenced by Oberon, Rust, Swift.
+It's similar to Go and its design has also been influenced by Oberon, Rust, Swift, and Python.
 
 V is a very simple language. Going through this documentation will take you about half an hour,
-and by the end of it you will learn pretty much the entire language.
+and by the end of it you will have pretty much learned the entire language.
 
-Despite being simple, it gives a lot of power to the developer. Anything you can do in other languages,
+The language promotes writing simple and clear code with minimal abstraction.
+
+Despite being simple, V gives the developer a lot of power. Anything you can do in other languages,
 you can do in V.
+
+## Table of Contents
+
+<table>
+	<tr>
+		<td width=16%><a href='#hello-world'>1. Hello world</a></td>
+		<td width=16%><a href='#comments'>2. Comments</a></td>
+		<td width=16%><a href='#functions'>3. Functions</a></td>
+		<td width=16%><a href='#variables'>4. Variables</a></td>
+		<td width=16%><a href='#primitive-types'>5. Primitive types</a></td>
+		<td width=16%><a href='#strings'>6. Strings</a></td>
+	</tr>
+	<tr>
+		<td><a href='#imports'>7. Imports</a></td>
+		<td><a href='#arrays'>Arrays</a></td>
+		<td><a href='#maps'>Maps</a></td>
+		<td><a href='#if'>If</a></td>
+		<td><a href='#in-operator'>In Operator</a></td>
+		<td><a href='#for-loop'>For loop</a></td>
+		</tr>
+	<tr>
+		<td><a href='#match'>Match</a></td>
+		<td><a href='#structs'>Structs</a></td>
+		<td><a href='#short-struct-initialization-syntax'>Short struct init syntax</a></td>
+		<td><a href='#access-modifiers'>Access modifiers</a></td>
+		<td><a href='#methods'>Methods</a></td>
+		<td><a href='#pure-functions-by-default'>Pure functions by default</a></td>
+		</tr>
+	<tr>
+		<td><a href='#anonymous--high-order-functions'>Anonymous & high order fns</a></td>
+		<td><a href='#references'>References</a></td>
+		<td><a href='#constants'>Constants</a></td>
+		<td><a href='#println'>println</a></td>
+		<td><a href='#modules'>Modules</a></td>
+		<td><a href='#interfaces'>Interfaces</a></td>
+		</tr>
+	<tr>
+		<td><a href='#enums'>Enums</a></td>
+		<td><a href='#sum-types'>Sum types</a></td>
+		<td><a href='#optionresult-types-and-error-handling'>Option/Result & error handling</a></td>
+		<td><a href='#generics'>Generics</a></td>
+		<td><a href='#concurrency'>Concurrency</a></td>
+		<td><a href='#decoding-json'>Decoding JSON</a></td>
+		</tr>
+	<tr>
+		<td><a href='#testing'>Testing</a></td>
+		<td><a href='#memory-management'>Memory managment</a></td>
+		<td><a href='#defer'>Defer</a></td>
+		<td><a href='#orm'>ORM</a></td>
+		<td><a href='#vfmt'>vfmt</a></td>
+		<td><a href='#writing-documentation'>Writing documentation</a></td>
+		</tr>
+	<tr>
+		<td><a href='#profiling'>Profiling</a></td>
+		<td><a href='#calling-c-functions-from-v'>Calling C functions from V</a></td>
+		<td><a href='#conditional-compilation'>Conditional compilation</a></td>
+		<td><a href='#compile-time-pseudo-variables'>Compile time pseudo variables</a></td>
+		<td><a href='#reflection-via-codegen'>Reflection via codegen</a></td>
+		<td><a href='#limited-operator-overloading'>Limited operator overloading</a></td>
+	</tr>
+	<tr>
+		<td><a href='#inline-assembly'>Inline assembly</a></td>
+		<td><a href='#translating-cc-to-v'>Translating C/C++ to V</a></td>
+		<td><a href='#hot-code-reloading'>Hot code reloading</a></td>
+		<td><a href='#cross-compilation'>Cross compilation</a></td>
+		<td><a href='#cross-platform-shell-scripts-in-v'>Cross-platform shell scripts in V</a></td>
+		<td><a href='#attributes'>Attributes</a></td>
+	</tr>
+	<tr>
+		<td><a href='#appendix-i-keywords'>Appendix I: Keywords</a></td>
+		<td><a href='#appendix-ii-operators'>Appendix II: Operators</a></td>
+	</tr>
+</table>
+
+
 
 ## Hello World
 
@@ -19,14 +96,24 @@ fn main() {
     println('hello world')
 }
 ```
+Save that snippet into a file `hello.v` . Now do: `v run hello.v` .
 
-Functions are declared with `fn`. Return type goes after the function
-name. In this case `main` doesn't return anything, so the type is
-omitted.
+> That is assuming you have symlinked your V with `v symlink`, as described 
+[here](https://github.com/vlang/v/blob/master/README.md#symlinking).
+If you have not yet, you have to type the path to V manually.
 
-Just like in C and all related languages, `main` is an entry point.
+Congratulations - you just wrote your first V program, and executed it!
 
-`println` is one of the few built-in functions. It prints the value
+> You can compile a program without execution with `v hello.v`.
+See `v help` for all supported commands.
+
+In the above example, you can see that functions are declared with `fn`.
+The return type goes after the function name. In this case `main` doesn't 
+return anything, so the return type can be omitted.
+
+As in many other languages (such as C, Go and Rust), `main` is an entry point.
+
+`println` is one of the few built-in functions. It prints the value passed to it
 to standard output.
 
 `fn main()` declaration can be skipped in one file programs.
@@ -77,6 +164,8 @@ Functions can be used before their declaration:
 This is true for all declarations in V and eliminates the need of header files
 or thinking about the order of files and declarations.
 
+<p>&nbsp;</p>
+
 ```v
 fn foo() (int, int) {
     return 2, 3
@@ -88,9 +177,9 @@ println(b) // 3
 ```
 
 Functions can return multiple values.
-Functions, like consts, and types, are private (not exported) by default.
-To allow other modules to use them, prepend `pub`. The same applies
-to consts and types.
+
+<p>&nbsp;</p>
+
 
 ```v
 pub fn public_function() {
@@ -99,6 +188,12 @@ pub fn public_function() {
 fn private_function() {
 }
 ```
+
+Like constants and types, functions are private (not exported) by default.
+To allow other modules to use them, prepend `pub`. The same applies
+to constants and types.
+
+
 
 ## Variables
 
@@ -123,6 +218,8 @@ type `T`.
 Unlike most other languages, V only allows defining variables in functions.
 Global (module level) variables are not allowed. There's no global state in V.
 
+<p>&nbsp;</p>
+
 ```v
 mut age := 20
 println(age)
@@ -135,8 +232,10 @@ immutable by default. To be able to change the value of the variable, you have t
 
 Try compiling the program above after removing `mut` from the first line.
 
-Please note the difference between `:=` and `=`  
+Note the (important) difference between `:=` and `=`
 `:=` is used for declaring and initializing, `=` is used for assigning.
+
+<p>&nbsp;</p>
 
 ```v
 fn main() {
@@ -144,8 +243,10 @@ fn main() {
 }
 ```
 
-This code will not compile, because variable `age` is not declared.
+This code will not compile, because the variable `age` is not declared.
 All variables need to be declared in V.
+
+<p>&nbsp;</p>
 
 ```v
 fn main() {
@@ -153,8 +254,10 @@ fn main() {
 }
 ```
 
-In development mode this code will result in an "unused variable" warning.
-In production mode (`v -prod foo.v`) it will not compile at all, like in Go.
+In development mode the compiler will warn you that you haven't used the variable (you'll get an "unused variable" warning).
+In production mode (enabled by passing the `-prod` flag to v – `v -prod foo.v`) it will not compile at all (like in Go).
+
+<p>&nbsp;</p>
 
 ```v
 fn main() {
@@ -165,9 +268,9 @@ fn main() {
 }
 ```
 
-Unlike most languages, variable shadowing is not allowed. Declaring a variable with a name that is already used in a parent scope will result in a compilation error.
+Unlike most languages, variable shadowing is not allowed. Declaring a variable with a name that is already used in a parent scope will cause a compilation error.
 
-## Basic types
+## Primitive types
 
 ```v
 bool
@@ -181,11 +284,34 @@ rune // represents a Unicode code point
 
 f32 f64
 
-byteptr
-voidptr
+any_int, any_float // internal intermediate types of number literals
+
+byteptr, voidptr, charptr, size_t // these are mostly used for C interoperability
+
+any // similar to C's void* and Go's interface{}
 ```
 
 Please note that unlike C and Go, `int` is always a 32 bit integer.
+
+There is an exceptions to the rule that all operators
+in V must have values of the same type on both sides. A small primitive type
+on one side can be automatically promoted if it fits
+completely into the data range of the type on the other side.
+These are the allowed possibilities:
+
+```
+   i8 → i16 → int → i64
+                  ↘     ↘
+                    f32 → f64
+                  ↗     ↗
+ byte → u16 → u32 → u64 ⬎
+      ↘     ↘     ↘      ptr
+   i8 → i16 → int → i64 ⬏
+```
+An `int` value for example can be automatically promoted to `f64`
+or `i64` but not to `f32` or `u32`. (`f32` would mean precission
+loss for large values and `u32` would mean loss of the sign for
+negative values).
 
 ## Strings
 
@@ -213,7 +339,15 @@ Both single and double quotes can be used to denote strings. For consistency,
 Interpolation syntax is pretty simple. It also works with fields:
 `'age = $user.age'`. If you need more complex expressions, use `${}`: `'can register = ${user.age > 13}'`.
 
-All operators in V must have values of the same type on both sides. This code will not compile if `age` is an `int`:
+Format specifiers similar to those in C's `printf()` are also supported. `f`, `g`, `x`, etc. are optional
+and specify the output format. The compiler takes care of the storage size, so there is no `hd` or `llu`.
+
+```v
+println('x = ${x:12.3f}')
+println('${item:-20} ${n:20d}')
+```
+
+All operators in V must have values of the same type on both sides. This code will not compile if `age` is not a string (for example if `age` were an `int`):
 
 ```v
 println('age = ' + age)
@@ -245,6 +379,19 @@ s := r'hello\nworld'
 println(s) // "hello\nworld"
 ```
 
+## Imports
+
+```v
+import os
+
+fn main() {
+    name := os.input('Enter your name:')
+    println('Hello, $name!')
+}
+```
+
+Modules can be imported using keyword `import`. When using types, functions, and constants from other modules, the full path must be specified. In the example above, `name := input()` wouldn't work. That means that it's always clear from which module a function is called.
+
 ## Arrays
 
 ```v
@@ -267,28 +414,33 @@ println('Alex' in names) // "false"
 
 names = [] // The array is now empty
 
+// Declare an empty array:
+users := []User{}
+
 // We can also preallocate a certain amount of elements.
-ids := [0].repeat(50) // This creates an array with 50 zeros
+ids := []int{ len: 50, init: 0 } // This creates an array with 50 zeros
 ```
 
-Array type is determined by the first element: `[1, 2, 3]` is an array of ints (`[]int`).
+The type of an array is determined by the first element: `[1, 2, 3]` is an array of ints (`[]int`).
 
 `['a', 'b']` is an array of strings (`[]string`).
 
-All elements must have the same type. `[1, 'a']` will not compile.
+If V is unable to infer the type of an array, the user can explicitly specify it for the first element: `[byte(0x0E), 0x1F, 0xBA, 0x0E]`
+
+V arrays are homogeneous (all elements must have the same type). This means that code like `[1, 'a']` will not compile.
 
 `<<` is an operator that appends a value to the end of the array.
 It can also append an entire array.
 
 `.len` field returns the length of the array. Note, that it's a read-only field,
-and it can't be modified by the user. All exported fields are read-only by default in V.
+and it can't be modified by the user. Exported fields are read-only by default in V.
 
 `val in array` returns true if the array contains `val`.
 
 All arrays can be easily printed with `println(arr)` and converted to a string
 with `s := arr.str()`.
 
-Arrays can be efficiently filtered and mapped with `.filter()` and
+Arrays can be efficiently filtered and mapped with the `.filter()` and
 `.map()` methods:
 
 ```v
@@ -301,7 +453,7 @@ upper := words.map(it.to_upper())
 println(upper) // ['HELLO', 'WORLD']
 ```
 
-`it` is a special variable that refers to an element in filter/map methods.
+`it` is a builtin variable which refers to element currently being processed in filter/map methods.
 
 ## Maps
 
@@ -314,6 +466,7 @@ println(m['bad_key']) // "0"
 println('bad_key' in m) // Use `in` to detect whether such key exists
 m.delete('two')
 
+// Short syntax
 numbers := {
     'one': 1,
     'two': 2
@@ -362,7 +515,7 @@ m := {'one': 1, 'two': 2}
 println('one' in m) // true
 ```
 
-It's also useful for writing more clear and compact boolean expressions:
+It's also useful for writing clearer and more compact boolean expressions:
 
 ```v
 if parser.token == .plus || parser.token == .minus ||
@@ -375,7 +528,7 @@ if parser.token in [.plus, .minus, .div, .mult] {
 }
 ```
 
-V optimizes such expressions, so both `if` statements above produce the same machine code, no arrays are created.
+V optimizes such expressions, so both `if` statements above produce the same machine code and no arrays are created.
 
 ## For loop
 
@@ -432,7 +585,7 @@ for {
 println(num) // "10"
 ```
 
-The condition can be omitted, this results in an infinite loop.
+The condition can be omitted, resulting in an infinite loop.
 
 ```v
 for i := 0; i < 10; i++ {
@@ -508,6 +661,8 @@ p := Point{
 println(p.x) // Struct fields are accessed using a dot
 ```
 
+<p>&nbsp;</p>
+
 Structs are allocated on the stack. To allocate a struct on the heap
 and get a reference to it, use the `&` prefix:
 
@@ -521,7 +676,9 @@ println(p.x)
 The type of `p` is `&Point`. It's a reference to `Point`.
 References are similar to Go pointers and C++ references.
 
-V doesn't have subclassing, but it supports embedded structs:
+<p>&nbsp;</p>
+
+V doesn't allow subclassing, but it supports embedded structs:
 
 ```v
 // TODO: this will be implemented later
@@ -536,6 +693,59 @@ button.set_pos(x, y)
 // Without embedding we'd have to do
 button.widget.set_pos(x,y)
 ```
+
+<p>&nbsp;</p>
+
+```v
+struct Foo {
+    n   int      // n is 0 by default
+    s   string   // s is '' by default
+    a   []int    // a is `[]int{}` by default
+    pos int = -1 // custom default value
+}
+```
+
+All struct fields are zeroed by default during the creation of the struct. Array and map fields are allocated.
+
+It's also possible to define custom default values.
+
+
+## Short struct initialization syntax
+
+There are no default function argument values or named arguments, for that the short struct initialization syntax can be used instead:
+
+```v
+struct ButtonConfig {
+    text        string
+    is_disabled bool
+    width       int = 70
+    height      int = 20
+}
+
+fn new_button(c ButtonConfig) &Button {
+    return &Button{
+        width: c.width
+	height: c.height
+	text: c.text
+    }
+}
+
+button := new_button(text:'Click me', width:100) // the height is unset, so it's 20, the default value
+```
+
+As you can see, we can use
+
+```
+new_button(text:'Click me', width:100)
+```
+
+instead of
+
+```
+new_button(ButtonConfig{text:'Click me', width:100})
+```
+
+This only works with functions that have a single struct argument.
 
 ## Access modifiers
 
@@ -571,8 +781,7 @@ pub:
 
 It's easy to see from this definition that `string` is an immutable type.
 The byte pointer with the string data is not accessible outside `builtin` at all.
-`len` field is public, but not mutable:
-
+The `len` field is public, but immutable:
 ```v
 fn main() {
     str := 'hello'
@@ -580,6 +789,8 @@ fn main() {
     str.len++      // Compilation error
 }
 ```
+
+This means that defining public readonly fields is very easy in V, no need in getters/setters or properties.
 
 ## Methods
 
@@ -611,14 +822,15 @@ but a short, preferably one letter long, name.
 
 ## Pure functions by default
 
-V functions are pure by default, meaning that their return values are only determined by their arguments,
+V functions are pure by default, meaning that their return values are a function of their arguments only,
 and their evaluation has no side effects.
 
 This is achieved by lack of global variables and all function arguments being immutable by default,
 even when references are passed.
 
-V is not a pure functional language however.
-It is possible to modify function arguments by using the same keyword `mut`:
+V is not a purely functional language however.
+
+It is possible to modify function arguments by using the keyword `mut`:
 
 ```v
 struct User {
@@ -626,7 +838,7 @@ mut:
     is_registered bool
 }
 
-fn (u mut User) register() {
+fn (mut u User) register() {
     u.is_registered = true
 }
 
@@ -640,7 +852,7 @@ In this example, the receiver (which is simply the first argument) is marked as 
 so `register()` can change the user object. The same works with non-receiver arguments:
 
 ```v
-fn multiply_by_2(arr mut []int) {
+fn multiply_by_2(mut arr []int) {
     for i in 0..arr.len {
         arr[i] *= 2
     }
@@ -658,8 +870,7 @@ It is preferable to return values instead of modifying arguments.
 Modifying arguments should only be done in performance-critical parts of your application
 to reduce allocations and copying.
 
-For this reason V doesn't allow to modify primitive args like integers, only
-complex types like arrays and maps.
+For this reason V doesn't allow the modification of arguments with primative types such as integers. Only more complex types such as arrays and maps may be modified.
 
 Use `user.register()` or `user = register(user)`
 instead of `register(mut user)`.
@@ -674,7 +885,7 @@ fn register(u User) User {
 user = register(user)
 ```
 
-## High order functions
+## Anonymous & high order functions
 
 ```v
 fn sqr(n int) int {
@@ -687,6 +898,17 @@ fn run(value int, op fn(int) int) int {
 
 fn main()  {
     println(run(5, sqr)) // "25"
+
+    // Anonymous functions can be declared inside other functions:
+    double_fn := fn(n int) int {
+        return n + n
+    }
+    println(run(5, double_fn)) // "10"
+
+    // Functions can be passed around without assigning them to variables:
+    res := run(5, fn(n int) int {
+        return n + n
+    })
 }
 ```
 
@@ -702,14 +924,14 @@ fn bar_function(foo Foo) {
 }
 ```
 
-If a function argument is immutable like `foo` in the examples above,
-V can pass it by value or by reference. The decision is made
-by the compiler, and the developer doesn't need to think about it.
+If a function argument is immutable (like `foo` in the examples above)
+V can pass it either value or reference. The compiler will determine this by itself,
+and the developer doesn't need to think about it.
 
 You no longer need to remember whether you should pass the struct by value
 or by reference.
 
-There's a way to ensure that the struct is always passed by reference by
+You can ensure that the struct is always passed by reference by
 adding `&`:
 
 ```v
@@ -719,9 +941,9 @@ fn (foo &Foo) bar() {
 ```
 
 `foo` is still immutable and can't be changed. For that,
-`(foo mut Foo)` has to be used.
+`(mut foo Foo)` has to be used.
 
-In general, V references are similar to Go pointers and C++ references.
+In general, V's references are similar to Go pointers and C++ references.
 For example, a tree structure definition would look like this:
 
 ```v
@@ -776,11 +998,13 @@ println(blue)
 
 Global variables are not allowed, so this can be really useful.
 
+<!--
 When naming constants, snake_case must be used.
 Many people prefer all caps consts: `TOP_CITIES`. This wouldn't work
 well in V, because consts are a lot more powerful than in other languages.
 They can represent complex structures, and this is used quite often since there
 are no globals:
+-->
 
 ```v
 println('Top cities: $TOP_CITIES.filter(.usa)')
@@ -883,6 +1107,11 @@ interface Speaker {
 }
 
 fn perform(s Speaker) string {
+    if s is Dog { // use `is` to check the underlying type of an interface
+        println('perform(dog)')
+    } else if s is Cat {
+        println('perform(cat)')
+    }
     return s.speak()
 }
 
@@ -908,7 +1137,83 @@ color = .green
 println(color) // "1"  TODO: print "green"?
 ```
 
-## Option/Result types & error handling
+## Sum types
+
+```v
+type Expr = BinaryExpr | UnaryExpr | IfExpr
+
+struct BinaryExpr{ ... }
+struct UnaryExpr{ ... }
+struct IfExpr{ ... }
+
+struct CallExpr {
+	args []Expr
+	...
+}
+
+fn (mut p Parser) expr(precedence int) Expr {
+	match p.tok {
+		.key_if { return IfExpr{} }
+		...
+		else    { return BinaryExpr{} }
+	}
+}
+
+fn gen(expr Expr) {
+	match expr {
+		IfExpr { gen_if(expr) } // `expr` is cast to the matched type automatically
+		...
+	}
+}
+
+fn gen_if(expr IfExpr) {
+	...
+}
+```
+
+To check whether a sum type is a certain type, use `is`:
+
+```v
+println(expr is IfExpr)
+```
+
+To cast a sum type to one of it's variants you use `as`:
+
+```v
+bin_expr := expr as BinaryExpr
+```
+
+You can also use match to determine the variant & and cast to it at the same time.
+There are 3 ways to access the cast variant inside a match branch:
+- the `it` variable
+- the shadowed match variable
+- using `as` to specify a variable name
+
+```v
+    fn binary_expr(bx BinaryExpr) {...}
+    fn unary_expr(ux UnaryExpr) {...}
+    fn if_expr(ix IfExpr) {...}
+
+        // using `it`
+	match expr {
+		BinaryExpr { binary_expr(it) }
+		...
+	}
+        // using the shadowed variable, in this case `expr`
+	match expr {
+		UnaryExpr { unary_expr(expr) }
+		...
+	}
+        // using `as` to specify a variable
+	match expr as actual_expr {
+		IfExpr { if_expr(actual_expr) }
+		...
+	}
+```
+
+Note: shadowing only works when the match expression is a variable. It will not work on struct fields, arrays indexing, or map key lookup.
+
+## Option/Result types and error handling
 
 ```v
 struct User {
@@ -948,12 +1253,12 @@ fn main() {
 
 V combines `Option` and `Result` into one type, so you don't need to decide which one to use.
 
-The amount of work required to "upgrade" a function to an optional function is minimal:
+The amount of work required to "upgrade" a function to an optional function is minimal;
 you have to add a `?` to the return type and return an error when something goes wrong.
 
-If you don't need to return an error, you can simply `return none`.
+If you don't need to return an error message, you can simply `return none` (this is a more efficient equivalent of `return error("")`).
 
-This is the primary way of handling errors in V. They are still values, like in Go,
+This is the primary mechanism for error handling in V. They are still values, like in Go,
 but the advantage is that errors can't be unhandled, and handling them is a lot less verbose.
 
 `err` is defined inside an `or` block and is set to the string message passed
@@ -970,22 +1275,23 @@ You can also propagate errors:
 
 ```v
 resp := http.get(url)?
-println(resp.body)
+println(resp.text)
 ```
 
-`http.get` returns `?http.Response`. It was called with `?`, so the error is propagated to the calling function
-(which must return an optional) or in case of `main` leads to a panic.
-Basically the code above is a shorter version of
+`http.get` returns `?http.Response`. Because it was called with `?`, the error will be propagated to the calling function
+(which must return an optional). If it is used in the `main()` function it will cause a panic.
+
+The code above is essentially a condensed version of
 
 ```v
 resp := http.get(url) or {
-    panic(err)
+    return error(err)
 }
-println(resp.body)
+println(resp.text)
 ```
 
-V does not have a way to force unwrap an optional (like Rust's `unwrap()`
-or Swift's `!`). You have to use `or { panic(err) }` instead.
+V does not have a way to forcibly "unwrap" an optional (as other languages do, for instance Rust's `unwrap()`
+or Swift's `!`). To do this use `or { panic(err) }` instead.
 
 ## Generics
 
@@ -1013,9 +1319,9 @@ post := posts_repo.find_by_id(1)?
 
 ## Concurrency
 
-The concurrency model is very similar to Go. To run `foo()` concurrently, just
-call it with `go foo()`. Right now, it launches the function in a new system
-thread. Soon coroutines and the scheduler will be implemented.
+V's model of concurrency is very similar to Go's. To run `foo()` concurrently, just
+call it with `go foo()`. Right now, it launches the function on a new system
+thread. Soon coroutines and a scheduler will be implemented.
 
 ## Decoding JSON
 
@@ -1043,10 +1349,9 @@ println(user.last_name)
 println(user.age)
 ```
 
-JSON is very popular nowadays, that's why JSON support is built in.
+Because of the ubiquitous nature of JSON, support for it is built directly into V.
 
-The first argument of the `json.decode` function is the type to decode to.
-The second argument is the JSON string.
+The `json.decode` function takes two arguments: the first argument of the `json.decode` function is the type into which the JSON value should be decoded and the second is a string containing the JSON data.
 
 V generates code for JSON encoding and decoding. No runtime reflection is used. This results in much better
 performance.
@@ -1065,28 +1370,29 @@ fn test_hello() {
 }
 ```
 
-`assert` keyword can be used outside of tests as well.
+The `assert` keyword can be used outside of tests as well.
 
-All test functions have to be placed in `*_test.v` files and begin with `test_`.
+All test functions have to be placed in files named `<some name>_test.v` and test function names must begin with `test_`.
 
-You can also define a special test function: `testsuite_begin`, which will be 
+You can also define a special test function: `testsuite_begin`, which will be
 run *before* all other test functions in a `_test.v` file.
 
-You can also define a special test function: `testsuite_end`, which will be 
+You can also define a special test function: `testsuite_end`, which will be
 run *after* all other test functions in a `_test.v` file.
 
 To run the tests do `v hello_test.v`.
 
 To test an entire module, do `v test mymodule`.
 
-You can also do `v test .` to test everything inside your curent folder (and underneath it).
+You can also do `v test .` to test everything inside your curent folder (and subdirectories).
 
 You can pass `-stats` to v test, to see more details about the individual tests in each _test.v file.
 
 ## Memory management
 
 (Work in progress)
-There's no garbage collection or reference counting. V cleans everything up
+
+V doesn't use garbage collection or reference counting. The compiler cleans everything up
 during compilation. If your V program compiles, it's guaranteed that it's going
 to be leak free. For example:
 
@@ -1144,66 +1450,69 @@ fn read_log() {
 
 ## ORM
 
-(alpha)
+(this is still in an alpha state)
 
-V has a built-in ORM that supports Postgres, and will soon support MySQL and SQLite.
+V has a built-in ORM (object-relational mapping) which supports SQLite, and will soon support MySQL, Postgres, MS SQL, and Oracle.
 
-The benefits of V ORM:
+V's ORM provides a number of benefits:
 
-- One syntax for all SQL dialects. Migrating to a different database becomes much easier.
-- Queries are constructed with V syntax. There's no need to learn another syntax.
-- Safety. It's impossible to construct a SQL query with an injection.
-- Compile time checks. No more typos that can only be caught at runtime.
-- Readability and simplicity. You don't need to manually parse the results and construct objects.
+- One syntax for all SQL dialects. Migrating between databases becomes much easier.
+- Queries are constructed using V's syntax. There's no need to learn another syntax.
+- Safety. All queries are automatically sanitised to prevent SQL injection.
+- Compile time checks. This prevents typos which can only be caught during runtime.
+- Readability and simplicity. You don't need to manually parse the results of a query and then manually construct objects from the parsed results.
 
 ```v
-struct Customer { // struct name has to be the same as the table name for now
-    id int // an integer id must be the first field
+struct Customer { // struct name has to be the same as the table name (for now)
+    id int // an field named `id` of integer type must be the first field
     name string
     nr_orders int
     country string
 }
 
-db := pg.connect(db_name, db_user)
+db := sqlite.connect('customers.db')
 
 // select count(*) from Customer
-nr_customers := db.select count from Customer
+nr_customers := sql db { select count from Customer }
 println('number of all customers: $nr_customers')
 
 // V syntax can be used to build queries
 // db.select returns an array
-uk_customers := db.select from Customer where country == 'uk' && nr_orders > 0
+uk_customers := sql db { select from Customer where country == 'uk' && nr_orders > 0 }
 println(uk_customers.len)
 for customer in uk_customers {
     println('$customer.id - $customer.name')
 }
 
 // by adding `limit 1` we tell V that there will be only one object
-customer := db.select from Customer where id == 1 limit 1
+customer := sql db { select from Customer where id == 1 limit 1 }
 println('$customer.id - $customer.name')
 
 // insert a new customer
 new_customer := Customer{name: 'Bob', nr_orders: 10}
-db.insert(new_customer)
+sql db { insert new_customer into Customer }
 ```
+
+For more examples, see <a href='https://github.com/vlang/v/blob/master/vlib/orm/orm_test.v'>vlib/orm/orm_test.v</a>.
 
 ## vfmt
 
-You don't need to worry about formatting your code or style guidelines.
-vfmt takes care of that:
+You don't need to worry about formatting your code or setting style guidelines.
+`vfmt` takes care of that:
 
 ```v
 v fmt file.v
 ```
 
 It's recommended to set up your editor, so that vfmt runs on every save.
+A vfmt run is usually pretty cheap (takes <30ms).
 
-Always run vfmt before pushing your code.
+Always run `v fmt -w file.v` before pushing your code.
 
-## writing_documentation
+## Writing Documentation
 
 The way it works is very similar to Go. It's very simple: there's no need to
-write documentation for your code, vdoc will generate it from the source code.
+write documentation seperately for your code, vdoc will generate it from docstrings in the source code.
 
 Documentation for each function/type/const must be placed right before the declaration:
 
@@ -1218,8 +1527,31 @@ The comment must start with the name of the definition.
 
 An overview of the module must be placed in the first comment right after the module's name.
 
-To generate documentation, run `v doc path/to/module` (TODO this is
-temporarily disabled).
+To generate documentation use vdoc, for example `v doc net.http`.
+
+## Profiling
+
+V has good support for profiling your programs: `v -profile profile.txt run file.v`
+That will produce a profile.txt file, which you can then analyze.
+
+The generated profile.txt file will have lines with 4 columns:
+a) how many times a function was called
+b) how much time in total a function took (in ms)
+c) how much time on average, a call to a function took (in ns)
+d) the name of the v function
+
+You can sort on column 3 (average time per function) using:
+`sort -n -k3 profile.txt|tail`
+
+You can also use stopwatches to measure just portions of your code explicitly:
+```v
+import time
+fn main(){
+    sw := time.new_stopwatch({})
+    println('Hello world')
+    println('Greeting the world took: ${sw.elapsed().nanoseconds()}ns')
+}
+```
 
 # Advanced Topics
 
@@ -1260,9 +1592,9 @@ Add `#flag` directives to the top of your V files to provide C compilation flags
 - `-L` for adding C library files search paths
 - `-D` for setting compile time variables
 
-You can use different flags for different targets. Right now, `linux`, `darwin` , `freebsd`, and `windows` are supported.
+You can use different flags for different targets. Currently the `linux`, `darwin` , `freebsd`, and `windows` flags are supported.
 
-NB: For now you have to use one flag per line:
+NB: Each flag must go on its own line (for now)
 
 ```v
 #flag linux -lsdl2
@@ -1272,10 +1604,10 @@ NB: For now you have to use one flag per line:
 #flag linux -DIMGUI_IMPL_API=
 ```
 
-You can also add C code, in your V module. For example, lets say that your C code is located in a folder named 'c' inside your module folder. Then:
+You can also include C code directly in your V module. For example, let's say that your C code is located in a folder named 'c' inside your module folder. Then:
 
 * Put a v.mod file inside the toplevel folder of your module (if you
-created your module with `v create` you already have v.mod file). For
+created your module with `v new` you already have v.mod file). For
 example:
 ```v
 Module {
@@ -1295,7 +1627,7 @@ Module {
 ```
 NB: @VROOT will be replaced by V with the *nearest parent folder, where there is a v.mod file*.
 Any .v file beside or below the folder where the v.mod file is, can use #flag @VROOT/abc to refer to this folder.
-The @VROOT folder is also *prepended* to the module lookup path, so you can *import* other 
+The @VROOT folder is also *prepended* to the module lookup path, so you can *import* other
 modules under your @VROOT, by just naming them.
 
 The instructions above will make V look for an compiled .o file in your module folder/c/implementation.o .
@@ -1305,7 +1637,7 @@ and tries to compile it to a .o file, then will use that.
 
 This allows you to have C code, that is contained in a V module, so that its distribution is easier.
 You can see a complete example for using C code in a V wrapper module here:
-[minimal V project, that has a module, which contains C code](https://github.com/vlang/v/tree/master/vlib/compiler/tests/project_with_c_code)
+[minimal V project, that has a module, which contains C code](https://github.com/vlang/v/tree/master/vlib/v/tests/project_with_c_code)
 
 You can use `-cflags` to pass custom flags to the backend C compiler. You can also use `-cc` to change the default C backend compiler.
 For example: `-cc gcc-9 -cflags -fsanitize=thread`.
@@ -1325,24 +1657,27 @@ V has these types for easier interoperability with C:
 - `charptr` for C's `char*`.
 - `&charptr` for C's `char**`
 
-To cast `voidptr` to V references, use `user := &User(user_void_ptr)`.
+To cast a `voidptr` to a V reference, use `user := &User(user_void_ptr)`.
 
-`voidptr` can also be dereferenced to V structs by casting: `user := User(user_void_ptr)`.
+`voidptr` can also be dereferenced into a V struct through casting: `user := User(user_void_ptr)`.
 
-Check out [socket.v for an example of calling C code from V](https://github.com/vlang/v/blob/master/vlib/net/socket.v) .
+[Socket.v has an example which calls C code from V](https://github.com/vlang/v/blob/master/vlib/net/socket.v) .
 
-To debug issues with the generated C code, you can pass these flags:
+To debug issues in the generated C code, you can pass these flags:
 
 - `-cg` - produces a less optimized executable with more debug information in it.
-- `-keep_c` - keep the generated C file, so your debugger can also use it.
-- `-pretty_c` - run clang-format over the generated C file, so it looks nicer and is easier to read.
-- `-show_c_cmd` - prints the C command that is used to build the program.
+- `-keepc` - keep the generated C file, so your debugger can also use it.
+- `-showcc` - prints the C command that is used to build the program.
 
-For best debugging experience, you can pass all of them at the same time: `v -cg -keep_c -pretty_c -show_c_cmd yourprogram.v` , then just run your debugger (gdb/lldb) or IDE with the produced executable `yourprogram`.
+For the best debugging experience, you can pass all of them at the same time: `v -cg -keepc -showcc yourprogram.v` , then just run your debugger (gdb/lldb) or IDE on the produced executable `yourprogram`.
 
-If you just want to inspect the generated C code, without compiling it further, you can also use: `-o file.c`. This will make V produce the `file.c` then stop.
+If you just want to inspect the generated C code, without further compilation, you can also use the `-o` flag (e.g. `-o file.c`). This will make V produce the `file.c` then stop.
 
-## Compile time if
+If you want to see the generated C source code for *just* a single C function, for example `main`, you can use: `-printfn main -o file.c` .
+
+To see a detailed list of all flags that V supports, use `v help`, `v help build`, `v help build-c` .
+
+## Conditional compilation
 
 ```v
 $if windows {
@@ -1360,13 +1695,63 @@ $if debug {
 }
 ```
 
-Compile time `if` starts with a `$`. Right now it can only be used to detect
+If you want an `if` to be evaluated at compile time it must be prefixed with a `$` sign. Right now it can only be used to detect
 an OS or a `-debug` compilation option.
+
+## Compile time pseudo variables
+
+V also gives your code access to a set of pseudo string variables, that are substituted at compile time:
+
+- `@FN` => replaced with the name of the current V function
+- `@MOD` => replaced with the name of the current V module
+- `@STRUCT` => replaced with the name of the current V struct
+- `@FILE` => replaced with the path of the V source file
+- `@LINE` => replaced with the V line number where it appears (as a string).
+- `@COLUMN` => replaced with the column where it appears (as a string).
+- `@VEXE` => replaced with the path to the V compiler
+- `@VHASH`  => replaced with the shortened commit hash of the V compiler (as a string).
+- `@VMOD_FILE` => replaced with the contents of the nearest v.mod file (as a string).
+
+That allows you to do the following example, useful while debugging/logging/tracing your code:
+```v
+eprintln( 'file: ' + @FILE + ' | line: ' + @LINE + ' | fn: ' + @MOD + '.' + @FN)
+```
+
+Another example, is if you want to embed the version/name from v.mod *inside* your executable:
+```v
+import v.vmod
+vm := vmod.decode( @VMOD_FILE ) or { panic(err) }
+eprintln('$vm.name $vm.version\n $vm.description')
+```
+
+## Performance tuning
+
+The generated C code is usually fast enough, when you compile your code 
+with `-prod`. There are some situations though, where you may want to give 
+additional hints to the C compiler, so that it can further optimize some 
+blocks of code.
+
+NB: These are *rarely* needed, and should not be used, unless you
+*profile your code*, and then see that there are significant benefits for them.
+To cite gcc's documentation: "programmers are notoriously bad at predicting
+how their programs actually perform".
+
+`[inline]` - you can tag functions with `[inline]`, so the C compiler will
+try to inline them, which in some cases, may be beneficial for peformance, 
+but may impact the size of your executable.
+
+`if _likely_(bool expression) {` this hints the C compiler, that the passed 
+boolean expression is very likely to be true, so it can generate assembly 
+code, with less chance of branch misprediction. In the JS backend,
+that does nothing.
+
+`if _unlikely_(bool expression) {` similar to `_likely_(x)`, but it hints that
+the boolean expression is highly improbable. In the JS backend, that does nothing.
 
 ## Reflection via codegen
 
 Having built-in JSON support is nice, but V also allows you to create efficient
-serializers for anything:
+serializers for any data format:
 
 ```v
 // TODO: not implemented yet
@@ -1426,12 +1811,12 @@ fn main() {
 ```
 
 Operator overloading goes against V's philosophy of simplicity and predictability. But since
-scientific and graphical applications are among V's domains, operator overloading is very important to have
+scientific and graphical applications are among V's domains, operator overloading is an important feature to have
 in order to improve readability:
 
 `a.add(b).add(c.mul(d))` is a lot less readable than `a + b + c * d`.
 
-To improve safety and maintainability, operator overloading has several limitations:
+To improve safety and maintainability, operator overloading is limited:
 
 - It's only possible to overload `+, -, *, /` operators.
 - Calling other functions inside operator functions is not allowed.
@@ -1478,7 +1863,7 @@ Run `v translate test.cpp` and V will generate `test.v`:
 
 ```v
 fn main {
-        mut s := []
+    mut s := []
     s << 'V is '
     s << 'awesome'
     println(s.len)
@@ -1558,10 +1943,15 @@ V can be used as an alternative to Bash to write deployment scripts, build scrip
 The advantage of using V for this is the simplicity and predictability of the language, and
 cross-platform support. "V scripts" run on Unix-like systems as well as on Windows.
 
-Use .vsh file extension. It will make all functions in the `os`
+Use the `.vsh` file extension. It will make all functions in the `os`
 module global (so that you can use `ls()` instead of `os.ls()`, for example).
 
 ```v
+#!/usr/local/bin/v run
+// The shebang above associates the file to V on Unix-like systems,
+// so it can be run just by specifying the path to the file
+// once it's made executable using `chmod +x`.
+
 rm('build/*')
 // Same as:
 for file in ls('build/') {
@@ -1579,10 +1969,52 @@ for file in ls('.') {
 
 Now you can either compile this like a normal V program and get an executable you can deploy and run
 anywhere:
-`v deploy.v && ./deploy`
+`v deploy.vsh && ./deploy`
 
-Or just run it more like a traditional bash script:
-`v run deploy.v`
+Or just run it more like a traditional Bash script:
+`v run deploy.vsh`
+
+On Unix-like platforms, the file can be run directly after making it executable using `chmod +x`:
+`./deploy.vsh`
+
+## Attributes
+
+V has several attributes that modify the behavior of functions and structs.
+
+An attribute is specifed inside `[]` right before the function/struct declaration and applies only to the following definition. 
+
+```v
+// Calling this function will result in a deprecation warning
+[deprecated]
+fn old_function() {}
+
+// This function's calls will be inlined.
+[inline]
+fn inlined_function() {}
+
+// The following struct can only be used as a reference (`&Window`) and allocated on the heap.
+[ref_only]
+struct Window {
+}
+
+// V will not generate this function and all its calls if the provided flag is false.
+// To use a flag, use `v -d flag`
+[if debug]
+fn foo() { }
+
+fn bar() {
+   foo() // will not be called if `-d debug` is not passed
+}
+
+// For C interop only, tells V that the following struct is defined with `typedef struct` in C
+[typedef] 
+struct C.Foo { }
+
+// Declare a function with WINAPI
+[windows_stdcall]
+fn C.WinFunction()
+```
+
 
 ## Appendix I: Keywords
 
@@ -1605,7 +2037,6 @@ in
 interface
 match
 module
-mut
 none
 or
 pub

@@ -122,8 +122,8 @@ fn test_complex_abs() {
 	mut c1 := cmplx.complex(3,4)
 	assert c1.abs() == 5
 	c1 = cmplx.complex(1,2)
-	assert c1.abs().eq(math.sqrt(5))
-	assert c1.abs().eq(c1.conjugate().abs())
+	assert c1.abs() == math.sqrt(5)
+	assert c1.abs() == c1.conjugate().abs()
 	c1 = cmplx.complex(7,0)
 	assert c1.abs() == 7
 }
@@ -132,17 +132,17 @@ fn test_complex_angle(){
 	// Test is based on and verified from practice examples of Khan Academy
 	// https://www.khanacademy.org/math/precalculus/imaginary-and-complex-numbers
 	mut c := cmplx.complex(1, 0)
-	assert (c.angle() * 180 / math.pi).eq(0)
+	assert c.angle() * 180 / math.pi == 0
 	c = cmplx.complex(1, 1)
-	assert (c.angle() * 180 / math.pi).eq(45)
+	assert c.angle() * 180 / math.pi == 45
 	c = cmplx.complex(0, 1)
-	assert (c.angle() * 180 / math.pi).eq(90)
+	assert c.angle() * 180 / math.pi == 90
 	c = cmplx.complex(-1, 1)
-	assert (c.angle() * 180 / math.pi).eq(135)
+	assert c.angle() * 180 / math.pi == 135
 	c = cmplx.complex(-1, -1)
-	assert (c.angle() * 180 / math.pi).eq(-135)
+	assert c.angle() * 180 / math.pi == -135
 	cc := c.conjugate()
-	assert (cc.angle() + c.angle()).eq(0)
+	assert cc.angle() + c.angle() == 0
 }
 
 
@@ -168,6 +168,8 @@ fn test_complex_mulinv() {
 	mut c2 := cmplx.complex(0.067568,-0.094595)
 	mut result := c1.mulinv()
 	// Some issue with precision comparison in f64 using == operator hence serializing to string
+	println(c2.str())
+	println(result.str())
 	assert result.str().eq(c2.str())
 	c1 = cmplx.complex(-3,4)
 	c2 = cmplx.complex(-0.12,-0.16)

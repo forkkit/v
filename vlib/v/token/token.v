@@ -10,13 +10,16 @@ pub:
 	line_nr int // the line number in the source where the token occured
 	// name_idx int // name table index for O(1) lookup
 	pos     int // the position of the token in scanner text
+	len     int // length of the literal
+	tidx    int // the index of the token
 }
 
 pub enum Kind {
+	unknown
 	eof
 	name // user
 	number // 123
-	str // 'foo'
+	string // 'foo'
 	str_inter // 'name=$user.name'
 	chartoken // `A`
 	plus
@@ -43,6 +46,8 @@ pub enum Kind {
 	str_dollar
 	left_shift
 	right_shift
+	not_in // !in
+	not_is // !is
 	// at // @
 	assign // =
 	decl_assign // :=
@@ -70,9 +75,7 @@ pub enum Kind {
 	lt
 	ge
 	le
-	// comments
-	line_comment
-	mline_comment
+	comment
 	nl
 	dot
 	dotdot
@@ -98,9 +101,9 @@ pub enum Kind {
 	key_goto
 	key_if
 	key_import
-	key_import_const
 	key_in
 	key_interface
+	key_is
 	// key_it
 	key_match
 	key_module
@@ -109,31 +112,34 @@ pub enum Kind {
 	key_return
 	key_select
 	key_sizeof
+	key_likely
+	key_unlikely
 	key_offsetof
 	key_struct
 	key_switch
 	key_true
 	key_type
-	// typeof
+	key_typeof
 	key_orelse
 	key_union
 	key_pub
 	key_static
 	key_unsafe
 	keyword_end
+	_end_
 }
 
 const (
 	assign_tokens = [Kind.assign, .plus_assign, .minus_assign, .mult_assign,
 	.div_assign, .xor_assign, .mod_assign, .or_assign, .and_assign,
 	.right_shift_assign, .left_shift_assign]
-	nr_tokens = 141
+	nr_tokens = int(Kind._end_)
 )
 // build_keys genereates a map with keywords' string values:
 // Keywords['return'] == .key_return
-fn build_keys() map[string]int {
-	mut res := map[string]int
-	for t := int(Kind.keyword_beg) + 1; t < int(Kind.keyword_end); t++ {
+fn build_keys() map[string]Kind {
+	mut res := map[string]Kind
+	for t in int(Kind.keyword_beg) + 1 .. int(Kind.keyword_end) {
 		key := token_str[t]
 		res[key] = t
 	}
@@ -143,12 +149,11 @@ fn build_keys() map[string]int {
 // TODO remove once we have `enum Kind { name('name') if('if') ... }`
 fn build_token_str() []string {
 	mut s := [''].repeat(nr_tokens)
-	s[Kind.keyword_beg] = ''
-	s[Kind.keyword_end] = ''
+	s[Kind.unknown] = 'unknown'
 	s[Kind.eof] = 'eof'
 	s[Kind.name] = 'name'
 	s[Kind.number] = 'number'
-	s[Kind.str] = 'STR'
+	s[Kind.string] = 'string'
 	s[Kind.chartoken] = 'char'
 	s[Kind.plus] = '+'
 	s[Kind.minus] = '-'
@@ -169,6 +174,8 @@ fn build_token_str() []string {
 	s[Kind.dotdot] = '..'
 	s[Kind.ellipsis] = '...'
 	s[Kind.comma] = ','
+	s[Kind.not_in] = '!in'
+	s[Kind.not_is] = '!is'
 	// s[Kind.at] = '@'
 	s[Kind.semicolon] = ';'
 	s[Kind.colon] = ':'
@@ -200,8 +207,7 @@ fn build_token_str() []string {
 	s[Kind.question] = '?'
 	s[Kind.left_shift] = '<<'
 	s[Kind.right_shift] = '>>'
-	s[Kind.line_comment] = '// line comment'
-	s[Kind.mline_comment] = '/* mline comment */'
+	s[Kind.comment] = '// comment'
 	s[Kind.nl] = 'NLL'
 	s[Kind.dollar] = '$'
 	s[Kind.str_dollar] = '$2'
@@ -214,6 +220,8 @@ fn build_token_str() []string {
 	s[Kind.key_return] = 'return'
 	s[Kind.key_module] = 'module'
 	s[Kind.key_sizeof] = 'sizeof'
+	s[Kind.key_likely] = '_likely_'
+	s[Kind.key_unlikely] = '_unlikely_'
 	s[Kind.key_go] = 'go'
 	s[Kind.key_goto] = 'goto'
 	s[Kind.key_const] = 'const'
@@ -229,11 +237,10 @@ fn build_token_str() []string {
 	s[Kind.key_import] = 'import'
 	s[Kind.key_embed] = 'embed'
 	s[Kind.key_unsafe] = 'unsafe'
-	// Kinds[key_typeof] = 'typeof'
+	s[Kind.key_typeof] = 'typeof'
 	s[Kind.key_enum] = 'enum'
 	s[Kind.key_interface] = 'interface'
 	s[Kind.key_pub] = 'pub'
-	s[Kind.key_import_const] = 'import_const'
 	s[Kind.key_in] = 'in'
 	s[Kind.key_atomic] = 'atomic'
 	s[Kind.key_orelse] = 'or'
@@ -246,6 +253,7 @@ fn build_token_str() []string {
 	s[Kind.key_select] = 'select'
 	s[Kind.key_none] = 'none'
 	s[Kind.key_offsetof] = '__offsetof'
+	s[Kind.key_is] = 'is'
 	return s
 }
 
@@ -264,7 +272,7 @@ pub fn is_key(key string) bool {
 }
 
 pub fn is_decl(t Kind) bool {
-	return t in [.key_enum, .key_interface, .key_fn, .key_struct, .key_type, .key_const, .key_import_const, .key_pub, .eof]
+	return t in [.key_enum, .key_interface, .key_fn, .key_struct, .key_type, .key_const, .key_pub, .eof]
 }
 
 pub fn (t Kind) is_assign() bool {
@@ -281,21 +289,6 @@ fn (t []Kind) contains(val Kind) bool {
 }
 
 pub fn (t Kind) str() string {
-	if t == .number {
-		return 'number'
-	}
-	if t == .chartoken {
-		return 'char' // '`lit`'
-	}
-	if t == .str {
-		return 'str' // "'lit'"
-	}
-	/*
-	if t < .plus {
-		return lit // string, number etc
-	}
-	*/
-
 	return token_str[int(t)]
 }
 
@@ -311,7 +304,6 @@ pub const (
 )
 */
 
-
 pub enum Precedence {
 	lowest
 	cond // OR or AND
@@ -319,105 +311,79 @@ pub enum Precedence {
 	assign // =
 	eq // == or !=
 	// less_greater // > or <
-	sum // + or -
-	product // * or /
+	sum // + - | ^
+	product // * / << >> &
 	// mod // %
 	prefix // -X or !X
-	postfix
+	postfix // ++ or --
 	call // func(X) or foo.method(X)
 	index // array[index], map[key]
 }
 
 pub fn build_precedences() []Precedence {
-	mut p := []Precedence
-	p = make(100, 100, sizeof(Precedence))
-	p[Kind.assign] = .assign
+	mut p := []Precedence{len:int(Kind._end_), cap:int(Kind._end_)}
+
+	p[Kind.lsbr] = .index
+	p[Kind.dot] = .call
+	// `++` | `--`
+	p[Kind.inc] = .postfix
+	p[Kind.dec] = .postfix
+	// `*` |  `/` | `%` | `<<` | `>>` | `&`
+	p[Kind.mul] = .product
+	p[Kind.div] = .product
+	p[Kind.mod] = .product
+	p[Kind.left_shift] = .product
+	p[Kind.right_shift] = .product
+	p[Kind.amp] = .product
+	// `+` |  `-` |  `|` | `^`
+	p[Kind.plus] = .sum
+	p[Kind.minus] = .sum
+	p[Kind.pipe] = .sum
+	p[Kind.xor] = .sum
+	// `==` | `!=` | `<` | `<=` | `>` | `>=`
 	p[Kind.eq] = .eq
 	p[Kind.ne] = .eq
-	p[Kind.lt] = .eq // less_greater
-	p[Kind.gt] = .eq // less_greater
-	p[Kind.le] = .eq // less_greater
-	p[Kind.ge] = .eq // less_greater
-	p[Kind.plus] = .sum
-	p[Kind.plus_assign] = .sum
-	p[Kind.minus] = .sum
-	p[Kind.minus_assign] = .sum
-	p[Kind.div] = .product
-	p[Kind.div_assign] = .product
-	p[Kind.mul] = .product
-	p[Kind.mult_assign] = .product
-	p[Kind.mod] = .product // mod
-	p[Kind.and] = .cond
+	p[Kind.lt] = .eq
+	p[Kind.le] = .eq
+	p[Kind.gt] = .eq
+	p[Kind.ge] = .eq
+	// `=` | `+=` | ...
+	p[Kind.assign] = .assign
+	p[Kind.plus_assign] = .assign
+	p[Kind.minus_assign] = .assign
+	p[Kind.div_assign] = .assign
+	p[Kind.mod_assign] = .assign
+	p[Kind.or_assign] = .assign
+	p[Kind.and_assign] = .assign
+	// <<= | *= | ...
+	p[Kind.left_shift_assign] = .assign
+	p[Kind.right_shift_assign] = .assign
+	p[Kind.mult_assign] = .assign
+	p[Kind.xor_assign] = .assign
+
+	p[Kind.key_in] = .in_as
+	p[Kind.not_in] = .in_as
+	p[Kind.key_as] = .in_as
+	p[Kind.key_is] = .in_as
+	p[Kind.not_is] = .in_as
 	p[Kind.logical_or] = .cond
-	p[Kind.lpar] = .call
-	p[Kind.dot] = .call
-	p[Kind.lsbr] = .index
+	p[Kind.and] = .cond
+
 	return p
 }
 
 const (
 	precedences = build_precedences()
-	// int(Kind.assign): Precedence.assign
-	// }
 )
+
 // precedence returns a tokens precedence if defined, otherwise lowest_prec
 pub fn (tok Token) precedence() int {
-	// TODO
-	// return int(precedences[int(tok)])
-	match tok.kind {
-		.lsbr {
-			return int(Precedence.index)
-		}
-		.dot {
-			return int(Precedence.call)
-		}
-		// `++` | `--`
-		.inc, .dec {
-			return int(Precedence.postfix)
-			// return 0
-			// return 7
-		}
-		// `*` |  `/` | `%` | `<<` | `>>` | `&`
-		.mul, .div, .mod, .left_shift, .right_shift, .amp {
-			return int(Precedence.product)
-		}
-		// `+` |  `-` |  `|` | `^`
-		.plus, .minus, .pipe, .xor {
-			return int(Precedence.sum)
-		}
-		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge {
-			return int(Precedence.eq)
-		}
-		// `&&`
-		// .and {
-		// return 3
-		// }
-		// `||`
-		// .logical_or,
-		.assign, .plus_assign, .minus_assign, .div_assign, .mod_assign, .or_assign, .and_assign,
-		//
-		.left_shift_assign, .right_shift_assign, .mult_assign {
-			return int(Precedence.assign)
-		}
-		.key_in, .key_as {
-			return int(Precedence.in_as)
-		}
-		.logical_or, .and {
-			return int(Precedence.cond)
-		}
-		// /.plus_assign {
-		// /return 2
-		// /}
-		else {
-			return int(Precedence.lowest)
-		}
-	}
+	return int(precedences[tok.kind])
 }
 
 // is_scalar returns true if the token is a scalar
 pub fn (tok Token) is_scalar() bool {
-	return tok.kind in [.number, .str]
+	return tok.kind in [.number, .string]
 }
 
 // is_unary returns true if the token can be in a unary expression
@@ -426,46 +392,6 @@ pub fn (tok Token) is_unary() bool {
 	// `+` | `-` | `!` | `~` | `*` | `&`
 	.plus, .minus, .not, .bit_not, .mul, .amp]
 }
-
-/*
-// NOTE: do we need this for all tokens (is_left_assoc / is_right_assoc),
-// or only ones with the same precedence?
-// is_left_assoc returns true if the token is left associative
-pub fn (tok Token) is_left_assoc() bool {
-	return tok.kind in [
-	// `.`
-	.dot,
-	// `+` | `-`
-	.plus, .minus, // additive
-	// .number,
-	// `++` | `--`
-	.inc, .dec,
-	// `*` | `/` | `%`
-	.mul, .div, .mod,
-	// `^` | `||` | `&`
-	.xor, .logical_or, .and,
-	// `==` | `!=`
-	.eq, .ne,
-	// `<` | `<=` | `>` | `>=`
-	.lt, .le, .gt, .ge, .ne, .eq,
-	// `,`
-	.comma]
-}
-
-// is_right_assoc returns true if the token is right associative
-pub fn (tok Token) is_right_assoc() bool {
-	return tok.kind in [
-	// `+` | `-` | `!`
-	.plus, .minus, .not, // unary
-	// `=` | `+=` | `-=` | `*=` | `/=`
-	.assign, .plus_assign, .minus_assign, .mult_assign, .div_assign,
-	// `%=` | `>>=` | `<<=`
-	.mod_assign, .right_shift_assign, .left_shift_assign,
-	// `&=` | `^=` | `|=`
-	.and_assign, .xor_assign, .or_assign]
-}
-*/
-
 
 pub fn (tok Kind) is_relational() bool {
 	return tok in [
@@ -480,7 +406,7 @@ pub fn (k Kind) is_start_of_type() bool {
 pub fn (kind Kind) is_infix() bool {
 	return kind in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in,
 	//
-	.key_as, .ge, .le, .logical_or, .xor,
+	.key_as, .ge, .le, .logical_or, .xor, .not_in, .key_is, .not_is,
 	//
 	.and, .dot, .pipe, .amp, .left_shift, .right_shift]
 }

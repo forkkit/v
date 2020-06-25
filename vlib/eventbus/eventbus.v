@@ -28,7 +28,6 @@ pub struct EventBus {
 pub mut:
 	registry   &Registry
 	publisher  &Publisher
-pub:
 	subscriber &Subscriber
 }
 
@@ -59,13 +58,13 @@ pub fn (eb &EventBus) has_subscriber(name string) bool {
 }
 
 // Publisher Methods
-fn (pb mut Publisher) publish(name string, sender voidptr, args voidptr) {
+fn (mut pb Publisher) publish(name string, sender voidptr, args voidptr) {
 	for i, event in pb.registry.events {
 		if event.name == name {
 			if event.once {
 				pb.registry.events.delete(i)
 			}
-			if event.receiver != voidptr(0) {
+			if event.receiver != 0 {
 				event.handler(event.receiver, args, sender)
 			} else {
 				event.handler(sender, args, voidptr(0))
@@ -74,7 +73,7 @@ fn (pb mut Publisher) publish(name string, sender voidptr, args voidptr) {
 	}
 }
 
-fn (p mut Publisher) clear_all() {
+fn (mut p Publisher) clear_all() {
 	if p.registry.events.len == 0 {
 		return
 	}
@@ -84,7 +83,7 @@ fn (p mut Publisher) clear_all() {
 }
 
 // Subscriber Methods
-pub fn (s mut Subscriber) subscribe(name string, handler EventHandlerFn) {
+pub fn (mut s Subscriber) subscribe(name string, handler EventHandlerFn) {
 	s.registry.events << EventHandler {
 		name: name
 		handler: handler
@@ -92,7 +91,7 @@ pub fn (s mut Subscriber) subscribe(name string, handler EventHandlerFn) {
 	}
 }
 
-pub fn (s mut Subscriber) subscribe_method(name string, handler EventHandlerFn, receiver voidptr) {
+pub fn (mut s Subscriber) subscribe_method(name string, handler EventHandlerFn, receiver voidptr) {
 	s.registry.events << EventHandler {
 		name: name
 		handler: handler
@@ -100,7 +99,7 @@ pub fn (s mut Subscriber) subscribe_method(name string, handler EventHandlerFn, 
 	}
 }
 
-pub fn (s mut Subscriber) subscribe_once(name string, handler EventHandlerFn) {
+pub fn (mut s Subscriber) subscribe_once(name string, handler EventHandlerFn) {
 	s.registry.events << EventHandler {
 		name: name
 		handler: handler
@@ -113,7 +112,7 @@ pub fn (s &Subscriber) is_subscribed(name string) bool {
 	return s.registry.check_subscriber(name)
 }
 
-pub fn (s mut Subscriber) unsubscribe(name string, handler EventHandlerFn) {
+pub fn (mut s Subscriber) unsubscribe(name string, handler EventHandlerFn) {
 	// v := voidptr(handler)
 	for i, event in s.registry.events {
 		if event.name == name {

@@ -22,8 +22,7 @@ pub const (
 
 #flag linux -I.
 
-#include "ft2build.h"
+//#include "ft2build.h"
 
-#define FONS_USE_FREETYPE
 #define SOKOL_FONTSTASH_IMPL
 #include "util/sokol_fontstash.h"

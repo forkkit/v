@@ -1,10 +1,7 @@
-import (
-	os
-	flag
-	filepath
-	scripting
-	vgit
-)
+import os
+import flag
+import scripting
+import vgit
 
 const (
 	tool_version = '0.0.3'
@@ -25,16 +22,14 @@ const (
               ## ... or do:
           git bisect bad
               ## Now you just repeat the above steps, each time running oldv with the same command, then mark the result as good or bad,
-              ## until you find the commit, where the problem first occured.
+              ## until you find the commit, where the problem first occurred.
               ## When you finish, do not forget to do:
           git bisect reset'
 )
 
 struct Context {
 mut:
-	v_repo_url    string // the url of the V repository. It can be a local folder path, if you want to eliminate network operations...
-	vc_repo_url   string // the url of the vc repository. It can be a local folder path, if you want to eliminate network operations...
-	workdir       string // the working folder (typically /tmp), where the tool will write
+	vgo           vgit.VGitOptions
 	commit_v      string='master' // the commit from which you want to produce a working v compiler (this may be a commit-ish too)
 	commit_vc     string='master' // this will be derived from commit_v
 	commit_v_hash string // this will be filled from the commit-ish commit_v using rev-list. It IS a commit hash.
@@ -43,19 +38,17 @@ mut:
 	cmd_to_run    string // the command that you want to run *in* the oldv repo
 	cc            string='cc' // the C compiler to use for bootstrapping.
 	cleanup       bool // should the tool run a cleanup first
-	verbose       bool // should the tool be much more verbose
-	show_help     bool // whether to show the usage screen
 }
 
-fn (c mut Context) compile_oldv_if_needed() {
+fn (mut c Context) compile_oldv_if_needed() {
 	mut vgit_context := vgit.VGitContext{
+		workdir:     c.vgo.workdir
+		v_repo_url:  c.vgo.v_repo_url
+		vc_repo_url: c.vgo.vc_repo_url
 		cc:          c.cc
-		workdir:     c.workdir
 		commit_v:    c.commit_v
 		path_v:      c.path_v
 		path_vc:     c.path_vc
-		v_repo_url:  c.v_repo_url
-		vc_repo_url: c.vc_repo_url
 	}
 	vgit_context.compile_oldv_if_needed()
 	c.commit_v_hash = vgit_context.commit_v__hash
@@ -70,28 +63,27 @@ fn main() {
 	scripting.used_tools_must_exist(['git', 'cc'])
 	mut context := Context{}
 	mut fp := flag.new_flag_parser(os.args)
-	fp.application(filepath.filename(os.executable()))
+	fp.application(os.file_name(os.executable()))
 	fp.version(tool_version)
 	fp.description(tool_description)
 	fp.arguments_description('VCOMMIT')
 	fp.skip_executable()
 	fp.limit_free_args(1, 1)
-	
-	context.cleanup = fp.bool('clean', true, 'Clean before running (slower).')
-	context.cmd_to_run = fp.string_('command', `c`, '', 'Command to run in the old V repo.\n')
-	
-	commits := vgit.add_common_tool_options(mut context, mut fp)
+
+	context.cleanup = fp.bool('clean', 0, true, 'Clean before running (slower).')
+	context.cmd_to_run = fp.string('command', `c`, '', 'Command to run in the old V repo.\n')
+
+	commits := vgit.add_common_tool_options(mut context.vgo, mut fp)
 	if commits.len > 0 {
 		context.commit_v = commits[0]
 	} else {
 		context.commit_v = scripting.run('git rev-list -n1 HEAD')
 	}
 	println('#################  context.commit_v: $context.commit_v #####################')
-	context.path_v = vgit.normalized_workpath_for_commit(context.workdir, context.commit_v)
-	context.path_vc = vgit.normalized_workpath_for_commit(context.workdir, 'vc')
-	if !os.is_dir(context.workdir) {
-		msg := 'Work folder: ' + context.workdir + ' , does not exist.'
-		eprintln(msg)
+	context.path_v = vgit.normalized_workpath_for_commit(context.vgo.workdir, context.commit_v)
+	context.path_vc = vgit.normalized_workpath_for_commit(context.vgo.workdir, 'vc')
+	if !os.is_dir(context.vgo.workdir) {
+		eprintln('Work folder: ${context.vgo.workdir} , does not exist.')
 		exit(2)
 	}
 	ecc := os.getenv('CC')
@@ -102,9 +94,9 @@ fn main() {
 		scripting.rmrf(context.path_v)
 		scripting.rmrf(context.path_vc)
 	}
-	
+
 	context.compile_oldv_if_needed()
-	
+
 	scripting.chdir(context.path_v)
 	println('#     v commit hash: $context.commit_v_hash')
 	println('#   checkout folder: $context.path_v')
@@ -116,5 +108,5 @@ fn main() {
 		println(cmdres.output)
 		exit(cmdres.exit_code)
 	}
-	
+
 }

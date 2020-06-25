@@ -46,8 +46,8 @@ fn test_gamma() {
 	assert gamma(1) == 1
 	assert gamma(5) == 24
 	sval := '2.453737'
-	assert tst_res(log_gamma(4.5).str(), sval) 
-	assert tst_res(log(gamma(4.5)).str(), sval) 
+	assert tst_res(log_gamma(4.5).str(), sval)
+	assert tst_res(log(gamma(4.5)).str(), sval)
 	//assert log_gamma(4.5).str() == sval
 	//assert log(gamma(4.5)).str() == sval
 	assert abs( log_gamma(4.5) - log(gamma(4.5)) ) < 0.000001
@@ -56,9 +56,17 @@ fn test_gamma() {
 
 fn test_mod() {
 	assert 4 % 2 == 0
-	x := 2
+	x := u64(2)
 	assert u64(5) % x == 1
 	mut a := 10
 	a %= 2
 	assert a == 0
+}
+
+fn test_copysign() {
+	assert copysign(5, -7) == -5.0
+	assert copysign(-5, 7) == 5.0
+	assert copysign(-5, -7) == -5.0
+	assert copysign(10, 0) == 10.0
+	assert copysign(10, 10) == 10.0
 }

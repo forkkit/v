@@ -12,7 +12,7 @@ module stbi
 #flag @VROOT/thirdparty/stb_image/stbi.o
 
 pub struct Image {
-mut:
+pub mut:
 	width       int
 	height      int
 	nr_channels int
@@ -27,7 +27,7 @@ fn C.stbi_image_free()
 fn C.stbi_set_flip_vertically_on_load()
 
 pub fn load(path string) Image {
-	ext := path.all_after('.')
+	ext := path.all_after_last('.')
 	mut res := Image {
 		ok: true
 		ext: ext

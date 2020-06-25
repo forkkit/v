@@ -3,89 +3,111 @@
 // that can be found in the LICENSE file.
 module main
 
-import (
-	compiler
-	internal.help
-	os
-	v.table
-	v.doc
-)
+import help
+import os
+import v.pref
+import v.util
+import v.builder
 
 const (
-	simple_cmd = ['fmt',
-	'up', 'self',
-	'create',
-	'test', 'test-fmt', 'test-compiler',
-	'bin2v',
-	'repl',
-	'build-tools', 'build-examples', 'build-vbinaries',
-	'setup-freetype']
+	simple_cmd = [
+		'fmt', 'up',
+		'self', 'symlink', 'bin2v',
+		'test', 'test-fmt', 'test-compiler', 'test-fixed',
+		'repl',
+		'build-tools', 'build-examples',
+		'build-vbinaries',
+		'setup-freetype', 'doc'
+	]
+	list_of_flags_that_allow_duplicates = ['cc', 'd', 'define', 'cf', 'cflags']
 )
 
 fn main() {
-	arg := join_flags_and_argument()
-	command,option := get_basic_command_and_option(arg)
-	is_verbose := '-verbose' in arg || '--verbose' in arg
-	if '-v' in option || '--version' in option || command == 'version' {
-		// Print the version and exit.
-		version_hash := compiler.vhash()
-		println('V $compiler.Version $version_hash')
-		return
-	}
-	if '-h' in option || '--help' in option || command == 'help' {
-		if is_verbose {
-			println(help.verbose_help_text)
+	main_v()
+}
+
+fn main_v() {
+	args := os.args[1..]
+	// args = 123
+	if args.len == 0 || args[0] in ['-', 'repl'] {
+		// Running `./v` without args launches repl
+		if args.len == 0 {
+			println('For usage information, quit V REPL using `exit` and use `v help`')
 		}
-		else {
-			println(help.help_text)
-		}
+		util.launch_tool(false, 'vrepl', os.args[1..])
 		return
 	}
-	if is_verbose {
-		eprintln('v    args: $arg')
-		eprintln('v command: $command')
-		eprintln('v options: $option')
-	}
-	if command == 'doc' {
-		mod := arg[arg.len-1]
-		table := table.new_table()
-		println(doc.doc(mod, table))
+	args_and_flags := util.join_env_vflags_and_os_args()[1..]
+	prefs, command := pref.parse_args(args_and_flags)
+	// if prefs.is_verbose {
+	// println('command = "$command"')
+	// println(util.full_v_version(prefs.is_verbose))
+	// }
+	if args.len > 0 && (args[0] in ['version', '-V', '-version', '--version'] || (args[0] ==
+		'-v' && args.len == 1)) {
+		// `-v` flag is for setting verbosity, but without any args it prints the version, like Clang
+		println(util.full_v_version(prefs.is_verbose))
 		return
 	}
+	if prefs.is_verbose {
+		// println('args= ')
+		// println(args) // QTODO
+		// println('prefs= ')
+		// println(prefs) // QTODO
+	}
+	// Start calling the correct functions/external tools
+	// Note for future contributors: Please add new subcommands in the `match` block below.
 	if command in simple_cmd {
 		// External tools
-		launch_tool(is_verbose, 'v' + command, command)
-		return
-	}
-	if command == 'run' || command == 'build' || command.ends_with('.v') || os.exists(command) {
-		compile(command, arg)
+		util.launch_tool(prefs.is_verbose, 'v' + command, os.args[1..])
 		return
 	}
 	match command {
-		'', '-' {
-			if arg.len == 1 {
-				println('Running REPL as no arguments are provided. For usage information, use `v help`.')
-			}
-			launch_tool(is_verbose, 'vrepl', '')
+		'help' {
+			invoke_help_and_exit(args)
+		}
+		'new', 'init' {
+			util.launch_tool(prefs.is_verbose, 'vcreate', os.args[1..])
+			return
 		}
 		'translate' {
 			println('Translating C to V will be available in V 0.3')
+			return
 		}
 		'search', 'install', 'update', 'remove' {
-			launch_tool(is_verbose, 'vpm', command)
+			util.launch_tool(prefs.is_verbose, 'vpm', os.args[1..])
+			return
+		}
+		'vlib-docs' {
+			util.launch_tool(prefs.is_verbose, 'vdoc', ['doc', '-m', '-s', os.join_path(os.base_dir(@VEXE), 'vlib')])
 		}
 		'get' {
-			println('Use `v install` to install modules from vpm.vlang.io')
-		}
-		'symlink' {
-			create_symlink()
-		}
-		//'doc' {
-			//println('Currently unimplemented')
-		//}
-		else {
-			eprintln('v $command: unknown command\nRun "v help" for usage.')
+			println('V Error: Use `v install` to install modules from vpm.vlang.io')
 			exit(1)
 		}
+		'version' {
+			println(util.full_v_version(prefs.is_verbose))
+			return
+		}
+		else {}
 	}
+	if command in ['run', 'build-module'] || command.ends_with('.v') || os.exists(command) {
+		// println('command')
+		// println(prefs.path)
+		builder.compile(command, prefs)
+		return
+	}
+	eprintln('v $command: unknown command\nRun "v help" for usage.')
+	exit(1)
+}
+
+fn invoke_help_and_exit(remaining []string) {
+	match remaining.len {
+		0, 1 { help.print_and_exit('default') }
+		2 { help.print_and_exit(remaining[1]) }
+		else {}
+	}
+	println('V Error: Expected only one help topic to be provided.')
+	println('For usage information, use `v help`.')
+	exit(1)
 }

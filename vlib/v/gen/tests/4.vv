@@ -31,14 +31,22 @@ fn main() {
 	mut f := [testa(),2,3,4]
 	mut g := [testb(1),'hello']
 
-	m1, m2 := mr_test()
-
 	//mut arr_foo := []Foo
 	arr_foo := [a]
 	//arr_foo << a // TODO
 	af_idx_el := arr_foo[0]
 	foo_a := af_idx_el.a
-	
+
+	mut m1 := map[string]string
+	mut m2 := {'v': 1, 'lang': 2}
+
+	ma1, ma2 := 'hello', 'vlang'
+	mr1, mr2 := mr_test()
+
+	opt1, opt2, opt3, opt4 := 'opt1', optional_a(), 'opt3', optional_b()
+	opt_mr1, opt_mr12 := optional_mr() or {
+		// err
+	}
 }
 
 fn mr_test() (int, string) {
@@ -79,3 +87,16 @@ struct Foo{
 	a string
 	b Bar
 }
+
+fn optional_a() ?string {
+	return '111'
+}
+
+fn optional_b() ?string {
+	return '222'
+}
+
+fn optional_mr() ?(int, string) {
+	return 1, '111'
+}
+

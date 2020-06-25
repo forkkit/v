@@ -4,27 +4,28 @@ struct User {
 	name string
 }
 
-struct A {
+struct Aaa {
+mut:
 	m map[string]int
 	users map[string]User
 }
 
-fn (a mut A) set(key string, val int) {
+fn (mut a Aaa) set(key string, val int) {
 	a.m[key] = val
 }
 
 fn test_map() {
 	mut m := map[string]int
-	assert m.size == 0
+	assert m.len == 0
 	m['hi'] = 80
 	m['hello'] = 101
 	assert m['hi'] == 80
 	assert m['hello'] == 101
-	assert m.size == 2
+	assert m.len == 2
 	assert 'hi' in m
 	mut sum := 0
 	// Test `for in`
-	for key, val in m {
+	for _, val in m {
 		sum += val
 	}
 	assert sum == 80 + 101
@@ -34,9 +35,9 @@ fn test_map() {
 	assert 'hi' in keys
 	assert 'hello' in keys
 	m.delete('hi')
-	assert m.size == 1
+	assert m.len == 1
 	m.delete('aloha')
-	assert m.size == 1
+	assert m.len == 1
 
 	assert m['hi'] == 0
 	assert m.keys().len == 1
@@ -46,7 +47,7 @@ fn test_map() {
 	users['1'] = User{'Peter'}
 	peter := users['1']
 	assert  peter.name == 'Peter'
-	mut a := A{
+	mut a := Aaa{
 		m: map[string]int
 		users: map[string]User
 	}
@@ -73,8 +74,8 @@ fn test_string_map() {
 fn test_large_map() {
 	//ticks := time.ticks()
 	mut nums := map[string]int
-	N := 30 * 1000
-	for i in 0..N {
+	n := 30 * 1000
+	for i in 0..n {
 	        key := i.str()
 	        nums[key] = i
 	}
@@ -159,14 +160,15 @@ fn test_string_arr() {
 	assert m['a'][1] == 'two'
 }
 
-fn mut_map(m mut map[string]int) {
+fn mut_map(mut m map[string]int) {
 	m['a'] = 10
 }
 
 fn test_mut_arg() {
 	mut m := map[string]int
 	mut_map(mut m)
-	assert m['a'] == 10
+	a := m['a']
+	assert a == 10
 }
 
 fn test_delete() {
@@ -175,8 +177,8 @@ fn test_delete() {
 	m['two'] = 2
 	println(m['two']) // => "2"
 	m.delete('two')
-	println(m['two']) // => 0
-	assert 'two' in m == false
+	println(m['two'].str()) // => 0
+	assert ('two' in m) == false
 	println('two' in m) // => true, on Linux  and Windows  <-- wrong !
 }
 
@@ -198,11 +200,86 @@ fn test_delete_size() {
         for i in 0..10 {
             m[arr[i]] = i
         }
-        assert(m.size == 10)
-        println(m.size)
+        assert(m.len == 10)
+        println(m.len)
         for i in 0..10 {
             m.delete(arr[i])
         }
     }
 }
 
+struct Mstruct1 {
+pub mut:
+	mymap map[string]int
+}
+
+struct Mstruct2 {
+pub mut:
+	mymap map[string]f64
+}
+
+struct Mstruct3 {
+pub mut:
+	mymap map[string]u16
+}
+
+fn test_map_assign() {
+	mut a := map[string]f64{}
+	mut b := map[string]int{}
+	mut c := map[string]u16{}
+	a = {
+		'x': 12.4
+		'y': 3
+	}
+	b = {
+		'u': -13
+		'v': 12
+	}
+	c = {
+		's': u16(5)
+		't': 3
+	}
+	_ := Mstruct1 {
+		{ 'p': 12 }
+	}
+	_ := Mstruct2 {
+		{ 'q': 1.7 }
+	}
+	_ := Mstruct3 {
+		{ 'r': u16(6), 's': 5 }
+	}
+}
+
+fn test_postfix_op_directly() {
+	mut a := map[string]int
+	a['aaa']++
+	assert a['aaa'] == 1
+	a['aaa']++
+	assert a['aaa'] == 2
+	a['bbb']--
+	assert a['bbb'] == -1
+	a['bbb']--
+	assert a['bbb'] == -2
+}
+
+fn test_map_push_directly() {
+	mut a := map[string][]string
+	a['aaa'] << ['a', 'b', 'c']
+	assert a['aaa'].len == 3
+	assert a['aaa'] == ['a', 'b', 'c']
+}
+
+fn test_assign_directly() {
+	mut a := map[string]int
+	a['aaa'] += 4
+	assert a['aaa'] == 4
+	a['aaa'] -= 2
+	assert a['aaa'] == 2
+}
+
+fn test_map_in_directly() {
+	for k, v in {'aa': 1} {
+		assert k == 'aa'
+		assert v == 1
+	}
+}

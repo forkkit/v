@@ -1,7 +1,7 @@
 module mysql
 
 pub struct Result {
-	result &MYSQL_RES
+	result &C.MYSQL_RES
 }
 
 pub struct Row {
@@ -9,47 +9,32 @@ pub mut:
 	vals []string
 }
 
-pub struct Field {
-	name             string
-	org_name         string
-	table            string
-	org_table        string
-	db               string
-	catalog          string
-	def              string
-	length           int
-	max_length       int
-	name_length      u32
-	org_name_length  u32
-	table_length     u32
-	org_table_length u32
-	db_length        u32
-	catalog_length   u32
-	def_length       u32
-	flags            u32
-	decimals         u32
-	charsetnr        u32
-	type_            FieldType
-}
-
+// fetch_row fetches the next row from the result set.
 pub fn (r Result) fetch_row() &byteptr {
-	return mysql_fetch_row(r.result)
+	return C.mysql_fetch_row(r.result)
 }
 
-pub fn (r Result) num_fields() int {
-	return mysql_num_fields(r.result)
+// n_rows returns the number of rows in the result set.
+pub fn (r Result) n_rows() u64 {
+	return C.mysql_num_rows(r.result)
 }
 
+// n_fields returns the number of columns in a result set.
+pub fn (r Result) n_fields() int {
+	return C.mysql_num_fields(r.result)
+}
+
+// rows returns rows with `array` of columns.
 pub fn (r Result) rows() []Row {
-	mut rows := []Row
-	nr_cols := r.num_fields()
+	mut rows := []Row{}
+	nr_cols := r.n_fields()
 	for rr := r.fetch_row(); rr; rr = r.fetch_row() {
 		mut row := Row{}
 		for i in 0..nr_cols {
 			if rr[i] == 0 {
 				row.vals << ''
 			} else {
-				row.vals << string(rr[i])
+				row.vals << string(&byte(rr[i]))
 			}
 		}
 		rows << row
@@ -57,10 +42,26 @@ pub fn (r Result) rows() []Row {
 	return rows
 }
 
-pub fn (r Result) fetch_fields() []Field {
-	mut fields := []Field
-	nr_cols := r.num_fields()
-	orig_fields := mysql_fetch_fields(r.result)
+// Returns rows with `map` of columns instead `array` of columns.
+pub fn (r Result) maps() []map[string]string {
+	mut array_map := []map[string]string{}
+	rows := r.rows()
+	fields := r.fields()
+	for i in 0..rows.len {
+		mut map_val := map[string]string
+		for j in 0..fields.len {
+			map_val[fields[j].name] = rows[i].vals[j]
+		}
+		array_map << map_val
+	}
+	return array_map
+}
+
+// fields returns an array of all field structures.
+pub fn (r Result) fields() []Field {
+	mut fields := []Field{}
+	nr_cols := r.n_fields()
+	orig_fields := C.mysql_fetch_fields(r.result)
 	for i in 0..nr_cols {
 		fields << Field{
 			name: string(orig_fields[i].name)
@@ -88,9 +89,32 @@ pub fn (r Result) fetch_fields() []Field {
 	return fields
 }
 
+pub struct Field {
+	name             string
+	org_name         string
+	table            string
+	org_table        string
+	db               string
+	catalog          string
+	def              string
+	length           int
+	max_length       int
+	name_length      u32
+	org_name_length  u32
+	table_length     u32
+	org_table_length u32
+	db_length        u32
+	catalog_length   u32
+	def_length       u32
+	flags            u32
+	decimals         u32
+	charsetnr        u32
+	type_            FieldType
+}
+
 pub fn (f Field) str() string {
 	return '
-{	
+{
 	name: "$f.name"
 	org_name: "$f.org_name"
 	table: "$f.table"
@@ -115,6 +139,7 @@ pub fn (f Field) str() string {
 '
 }
 
+// free frees memory used by a result set
 pub fn (r Result) free() {
-	mysql_free_result(r.result)
+	C.mysql_free_result(r.result)
 }

@@ -1209,7 +1209,16 @@ _SOKOL_PRIVATE void _sapp_frame(void) {
 @end
 #endif
 
-static NSWindow* _sapp_macos_window_obj;
+@interface MyWindow : NSWindow {
+}
+@end
+
+@implementation MyWindow
+- (BOOL)canBecomeKeyWindow {    return YES;}
+@end
+
+
+static MyWindow* _sapp_macos_window_obj;
 static _sapp_macos_window_delegate* _sapp_macos_win_dlg_obj;
 static _sapp_macos_app_delegate* _sapp_macos_app_dlg_obj;
 static _sapp_macos_view* _sapp_view_obj;
@@ -1337,7 +1346,7 @@ _SOKOL_PRIVATE void _sapp_macos_init_keytable(void) {
 }
 
 _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
-	puts("RUN");
+	//puts("Sokol run()");
     _sapp_init_state(desc);
     _sapp_macos_init_keytable();
     [NSApplication sharedApplication];
@@ -1401,13 +1410,17 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
         }
         _sapp.dpi_scale = (float)_sapp.framebuffer_width / (float) _sapp.window_width;
     }
-    const NSUInteger style =
+    NSUInteger style =    NSWindowStyleMaskBorderless;
+    if (!_sapp.desc.fullscreen) {
+	style =
         NSWindowStyleMaskTitled |
         NSWindowStyleMaskClosable |
         NSWindowStyleMaskMiniaturizable |
         NSWindowStyleMaskResizable;
+	  }
+
     NSRect window_rect = NSMakeRect(0, 0, _sapp.window_width, _sapp.window_height);
-    _sapp_macos_window_obj = [[NSWindow alloc]
+    _sapp_macos_window_obj = [[MyWindow alloc]
         initWithContentRect:window_rect
         styleMask:style
         backing:NSBackingStoreBuffered
@@ -1480,7 +1493,7 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
         [[NSRunLoop currentRunLoop] addTimer:_sapp_macos_timer_obj forMode:NSDefaultRunLoopMode];
     #endif
     _sapp.valid = true;
-    if (_sapp.desc.fullscreen) {
+    if (_sapp.desc.fullscreen && false) {
         /* on GL, this already toggles a rendered frame, so set the valid flag before */
         [_sapp_macos_window_obj toggleFullScreen:self];
     }
@@ -1617,6 +1630,7 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 - (BOOL)acceptsFirstResponder {
     return YES;
 }
+
 - (void)updateTrackingAreas {
     if (trackingArea != nil) {
         [self removeTrackingArea:trackingArea];
@@ -2947,7 +2961,7 @@ _SOKOL_PRIVATE const _sapp_gl_fbconfig* _sapp_gl_choose_fbconfig(const _sapp_gl_
 #include <windows.h>
 #include <windowsx.h>
 #include <shellapi.h>
-#pragma comment (lib, "Shell32.lib")
+#pragma comment (lib, "Shell32")
 
 #if defined(SOKOL_D3D11)
 #ifndef D3D11_NO_HELPERS
@@ -6767,8 +6781,13 @@ _SOKOL_PRIVATE void _sapp_x11_query_window_size(void) {
 
 _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
     _sapp_x11_colormap = XCreateColormap(_sapp_x11_display, _sapp_x11_root, visual, AllocNone);
+
+
+
+
     XSetWindowAttributes wa;
     memset(&wa, 0, sizeof(wa));
+   //wa.override_redirect = 1;
     const uint32_t wamask = CWBorderPixel | CWColormap | CWEventMask;
     wa.colormap = _sapp_x11_colormap;
     wa.border_pixel = 0;
@@ -6791,6 +6810,26 @@ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
     _sapp_x11_release_error_handler();
     if (!_sapp_x11_window) {
         _sapp_fail("X11: Failed to create window");
+    }
+
+    if (_sapp.desc.fullscreen) {
+	    Atom wm_state = XInternAtom(_sapp_x11_display, "_NET_WM_STATE", False);
+	    Atom fullscreen = XInternAtom(_sapp_x11_display, "_NET_WM_STATE_FULLSCREEN", False);
+
+	    XEvent xev;
+	    memset(&xev, 0, sizeof(xev));
+	    xev.type = ClientMessage;
+	    xev.xclient.window = _sapp_x11_window;
+	    xev.xclient.message_type = wm_state;
+	    xev.xclient.format = 32;
+	    xev.xclient.data.l[0] = 1;
+	    xev.xclient.data.l[1] = fullscreen;
+	    xev.xclient.data.l[2] = 0;
+
+	    XMapWindow(_sapp_x11_display, _sapp_x11_window);
+
+	    XSendEvent (_sapp_x11_display, DefaultRootWindow(_sapp_x11_display), False,
+		    SubstructureRedirectMask | SubstructureNotifyMask, &xev);
     }
 
     Atom protocols[] = {

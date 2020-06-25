@@ -1,15 +1,12 @@
 module main
 
-import (
-	os
-	filepath
-	v.pref
-)
+import os
+import v.pref
 
 fn main() {
 	$if windows {
 		println('Setup freetype...')
-		vroot := filepath.dir(pref.vexe_path())
+		vroot := os.dir(pref.vexe_path())
 		os.chdir(vroot)
 
 		if os.is_dir('./thirdparty/freetype') {

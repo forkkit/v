@@ -5,22 +5,24 @@ module http
 
 import net.urllib
 import net.http.chunked
+import strings
+import net
 
 const (
-	max_redirects = 4
+	max_redirects        = 4
 	content_type_default = 'text/plain'
+	bufsize = 1536
 )
 
 pub struct Request {
-pub:
+pub mut:
 	method     string
 	headers    map[string]string
 	cookies    map[string]string
 	data       string
 	url        string
-	user_agent string
+	user_agent string = 'v.http'
 	verbose    bool
-mut:
 	user_ptr   voidptr
 	ws_func    voidptr
 }
@@ -28,20 +30,36 @@ mut:
 pub struct FetchConfig {
 pub mut:
 	method     string
-	data       string=''
-	params     map[string]string=map[string]string
-	headers    map[string]string=map[string]string
-	cookies    map[string]string=map[string]string
-	user_agent string='v'
-	verbose    bool=false
+	data       string
+	params     map[string]string
+	headers    map[string]string
+	cookies    map[string]string
+	user_agent string = 'v.http'
+	verbose    bool = false
 }
 
 pub struct Response {
 pub:
 	text        string
-	headers     map[string]string
+	headers     map[string]string // original response headers, 'Set-Cookie' or 'set-Cookie', etc.
+	lheaders    map[string]string // same as headers, but with normalized lowercased keys, like 'set-cookie'
 	cookies     map[string]string
 	status_code int
+}
+
+pub fn new_request(method, url_, data string) ?Request {
+	url := if method == 'GET' { url_ + '?' + data } else { url_ }
+	//println('new req() method=$method url="$url" dta="$data"')
+	return Request{
+		method: method.to_upper()
+		url: url
+		data: data
+		/*
+		headers: {
+			'Accept-Encoding': 'compress'
+		}
+		*/
+	}
 }
 
 pub fn get(url string) ?Response {
@@ -128,7 +146,7 @@ pub fn get_text(url string) string {
 }
 
 pub fn url_encode_form_data(data map[string]string) string {
-	mut pieces := []string
+	mut pieces := []string{}
 	for _key, _value in data {
 		key := urllib.query_escape(_key)
 		value := urllib.query_escape(_value)
@@ -137,7 +155,7 @@ pub fn url_encode_form_data(data map[string]string) string {
 	return pieces.join('&')
 }
 
-fn fetch_with_method(method string, url string, _config FetchConfig) ?Response {
+fn fetch_with_method(method, url string, _config FetchConfig) ?Response {
 	mut config := _config
 	config.method = method
 	return fetch(url, config)
@@ -151,7 +169,7 @@ fn build_url_from_fetch(_url string, config FetchConfig) ?string {
 	if params.keys().len == 0 {
 		return url.str()
 	}
-	mut pieces := []string
+	mut pieces := []string{}
 	for key in params.keys() {
 		pieces << '${key}=${params[key]}'
 	}
@@ -163,21 +181,21 @@ fn build_url_from_fetch(_url string, config FetchConfig) ?string {
 	return url.str()
 }
 
-fn (req mut Request) free() {
+fn (mut req Request) free() {
 	req.headers.free()
 }
 
-fn (resp mut Response) free() {
+fn (mut resp Response) free() {
 	resp.headers.free()
 }
 
 // add_header adds the key and value of an HTTP request header
-pub fn (req mut Request) add_header(key, val string) {
+pub fn (mut req Request) add_header(key, val string) {
 	req.headers[key] = val
 }
 
 pub fn parse_headers(lines []string) map[string]string {
-	mut headers := map[string]string
+	mut headers := map[string]string{}
 	for i, line in lines {
 		if i == 0 {
 			continue
@@ -207,11 +225,11 @@ pub fn (req &Request) do() ?Response {
 			return error(err)
 		}
 		resp = qresp
-		if !(resp.status_code in [301, 302, 303, 307, 308]) {
+		if resp.status_code !in [301, 302, 303, 307, 308] {
 			break
 		}
 		// follow any redirects
-		mut redirect_url := resp.headers['Location']
+		mut redirect_url := resp.lheaders['location']
 		if redirect_url.len > 0 && redirect_url[0] == `/` {
 			url.set_path(redirect_url) or {
 				return error('http.request.do: invalid path in redirect: "$redirect_url"')
@@ -227,11 +245,11 @@ pub fn (req &Request) do() ?Response {
 	return resp
 }
 
-fn (req &Request) method_and_url_to_response(method string, url net_dot_urllib.URL) ?Response {
+fn (req &Request) method_and_url_to_response(method string, url urllib.URL) ?Response {
 	host_name := url.hostname()
 	scheme := url.scheme
 	p := url.path.trim_left('/')
-	path := if url.query().size > 0 { '/$p?${url.query().encode()}' } else { '/$p' }
+	path := if url.query().len > 0 { '/$p?${url.query().encode()}' } else { '/$p' }
 	mut nport := url.port().int()
 	if nport == 0 {
 		if scheme == 'http' {
@@ -248,8 +266,7 @@ fn (req &Request) method_and_url_to_response(method string, url net_dot_urllib.U
 			return error(err)
 		}
 		return res
-	}
-	else if scheme == 'http' {
+	} else if scheme == 'http' {
 		// println('http_do( $nport, $method, $host_name, $path )')
 		res := req.http_do(nport, method, host_name, path) or {
 			return error(err)
@@ -261,9 +278,10 @@ fn (req &Request) method_and_url_to_response(method string, url net_dot_urllib.U
 
 fn parse_response(resp string) Response {
 	// TODO: Header data type
-	mut headers := map[string]string
+	mut headers := map[string]string{}
+	mut lheaders := map[string]string{}
 	// TODO: Cookie data type
-	mut cookies := map[string]string
+	mut cookies := map[string]string{}
 	first_header := resp.all_before('\n')
 	mut status_code := 0
 	if first_header.contains('HTTP/') {
@@ -293,20 +311,25 @@ fn parse_response(resp string) Response {
 		// if h.contains('Content-Type') {
 		// continue
 		// }
-		key := h[..pos]
+
+		mut key := h[..pos]
+		lkey := key.to_lower()
 		val := h[pos + 2..]
-		if key == 'Set-Cookie' {
+		if lkey == 'set-cookie' {
 			parts := val.trim_space().split('=')
 			cookies[parts[0]] = parts[1]
 		}
-		headers[key] = val.trim_space()
+		tval := val.trim_space()
+		headers[key] = tval
+		lheaders[lkey] = tval
 	}
-	if headers['Transfer-Encoding'] == 'chunked' {
+	if lheaders['transfer-encoding'] == 'chunked' || lheaders['content-length'] == '' {
 		text = chunked.decode(text)
 	}
 	return Response{
 		status_code: status_code
 		headers: headers
+		lheaders: lheaders
 		cookies: cookies
 		text: text
 	}
@@ -314,14 +337,14 @@ fn parse_response(resp string) Response {
 
 fn (req &Request) build_request_headers(method, host_name, path string) string {
 	ua := req.user_agent
-	mut uheaders := []string
-	if !('Host' in req.headers) {
+	mut uheaders := []string{}
+	if 'Host' !in req.headers {
 		uheaders << 'Host: $host_name\r\n'
 	}
-	if !('User-Agent' in req.headers) {
+	if 'User-Agent' !in req.headers {
 		uheaders << 'User-Agent: $ua\r\n'
 	}
-	if req.data.len > 0 && !('Content-Length' in req.headers) {
+	if req.data.len > 0 && 'Content-Length' !in req.headers {
 		uheaders << 'Content-Length: ${req.data.len}\r\n'
 	}
 	for key, val in req.headers {
@@ -331,14 +354,15 @@ fn (req &Request) build_request_headers(method, host_name, path string) string {
 		uheaders << '${key}: ${val}\r\n'
 	}
 	uheaders << req.build_request_cookies_header()
-	return '$method $path HTTP/1.1\r\n' + uheaders.join('') + 'Connection: close\r\n\r\n' + req.data
+	return '$method $path HTTP/1.1\r\n' + uheaders.join('') + 'Connection: close\r\n\r\n' +
+		req.data
 }
 
 fn (req &Request) build_request_cookies_header() string {
 	if req.cookies.keys().len < 1 {
 		return ''
 	}
-	mut cookie := []string
+	mut cookie := []string{}
 	for key, val in req.cookies {
 		cookie << '$key: $val'
 	}
@@ -364,4 +388,26 @@ pub fn escape(s string) string {
 	panic('http.escape() was replaced with http.escape_url()')
 }
 
-type wsfn fn(s string, ptr voidptr)
+fn (req &Request) http_do(port int, method, host_name, path string) ?Response {
+	rbuffer := [bufsize]byte
+	mut sb := strings.new_builder(100)
+	s := req.build_request_headers(method, host_name, path)
+	client := net.dial(host_name, port) or {
+		return error(err)
+	}
+	client.send(s.str, s.len) or {
+	}
+	for {
+		readbytes := client.crecv(rbuffer, bufsize)
+		if readbytes < 0 {
+			return error('http.request.http_do: error reading response. readbytes=$readbytes')
+		}
+		if readbytes == 0 {
+			break
+		}
+		sb.write(tos(rbuffer, readbytes))
+	}
+	client.close() or {
+	}
+	return parse_response(sb.str())
+}

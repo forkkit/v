@@ -1,9 +1,7 @@
 module main
 
-import (
-	os
-	testing
-)
+import os
+import testing
 
 const (
 	known_failing_exceptions = ['./examples/vweb/vweb_example.v',
@@ -20,8 +18,8 @@ const (
 	'./vlib/arrays/arrays.v',
 	'./vlib/arrays/arrays_test.v',
 	'./vlib/builtin/js/hashmap.v',
-	'./vlib/compiler/tests/fn_variadic_test.v',
-	'./vlib/compiler/tests/generic_test.v',
+	'./vlib/v/tests/fn_variadic_test.v',
+	'./vlib/v/tests/generic_test.v',
 	'./vlib/crypto/aes/aes.v',
 	'./vlib/crypto/aes/aes_cbc.v',
 	'./vlib/crypto/aes/block_generic.v',
@@ -56,7 +54,7 @@ fn v_test_formatting(vargs string) {
 }
 
 fn v_files() []string {
-	mut files_that_can_be_formatted := []string
+	mut files_that_can_be_formatted := []string{}
 	all_test_files := os.walk_ext('.', '.v')
 	for tfile in all_test_files {
 		if tfile in known_failing_exceptions {

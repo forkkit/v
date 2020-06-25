@@ -19,7 +19,7 @@ pub enum OS {
 }
 
 // Helper function to convert string names to OS enum
-pub fn os_from_string(os_str string) OS {
+pub fn os_from_string(os_str string) ?OS {
 	match os_str {
 		'linux' {
 			return .linux
@@ -64,7 +64,7 @@ pub fn os_from_string(os_str string) OS {
 			return ._auto
 		}
 		else {
-			panic('bad os $os_str')
+			return error('bad OS $os_str')
 		}
 	}
 }
@@ -106,11 +106,6 @@ pub fn (o OS) str() string {
 		}
 		.haiku {
 			return 'Haiku'
-		}
-		else {
-			//TODO Remove when V is smart enough to know that there's no other possibilities
-			//should never be reached as all enum types have been enumerated
-			panic('unknown OS enum type: $o')
 		}
 	}
 }

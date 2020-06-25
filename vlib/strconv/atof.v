@@ -1,37 +1,37 @@
-/**********************************************************************
-*
-* atof util
-*
-* Copyright (c) 2019 Dario Deledda. All rights reserved.
-* Use of this source code is governed by an MIT license
-* that can be found in the LICENSE file.
-*
-* This file contains utilities for convert a string in a f64 variable
-* IEEE 754 standard is used
-*
-* Know limitation:
-* - limited to 18 significant digits
-*
-* The code is inspired by:
-* Grzegorz Kraszewski krashan@teleinfo.pb.edu.pl
-* URL: http://krashan.ppa.pl/articles/stringtofloat/
-* Original license: MIT
-*
-**********************************************************************/
+/*
+
+atof util
+
+Copyright (c) 2019 Dario Deledda. All rights reserved.
+Use of this source code is governed by an MIT license
+that can be found in the LICENSE file.
+
+This file contains utilities for convert a string in a f64 variable
+IEEE 754 standard is used
+
+Know limitation:
+- limited to 18 significant digits
+
+The code is inspired by:
+Grzegorz Kraszewski krashan@teleinfo.pb.edu.pl
+URL: http://krashan.ppa.pl/articles/stringtofloat/
+Original license: MIT
+
+*/
 module strconv
 
 union Float64u {
 mut:
 	f f64
-	u u64 = u64(0)
+	u u64
 }
 
-/**********************************************************************
-*
-* 96 bit operation utilities
-* Note: when u128 will be available these function can be refactored
-*
-**********************************************************************/
+/*
+
+96 bit operation utilities
+Note: when u128 will be available these function can be refactored
+
+*/
 
 // right logical shift 96 bit
 fn lsr96(s2 u32, s1 u32, s0 u32) (u32,u32,u32) {
@@ -89,63 +89,63 @@ fn sub96(s2 u32, s1 u32, s0 u32, d2 u32, d1 u32, d0 u32) (u32,u32,u32) {
 	return r2,r1,r0
 }
 
-/**********************************************************************
-*
-* Constants
-*
-**********************************************************************/
+/*
+
+Constants
+
+*/
 
 
 const (
 //
 // f64 constants
 //
-	DIGITS = 18
-	DOUBLE_PLUS_ZERO = u64(0x0000000000000000)
-	DOUBLE_MINUS_ZERO = 0x8000000000000000
-	DOUBLE_PLUS_INFINITY = 0x7FF0000000000000
-	DOUBLE_MINUS_INFINITY = 0xFFF0000000000000
+	digits = 18
+	double_plus_zero = u64(0x0000000000000000)
+	double_minus_zero = u64(0x8000000000000000)
+	double_plus_infinity = u64(0x7FF0000000000000)
+	double_minus_infinity = u64(0xFFF0000000000000)
 	//
 	// parser state machine states
 	//
-	FSM_A = 0
-	FSM_B = 1
-	FSM_C = 2
-	FSM_D = 3
-	FSM_E = 4
-	FSM_F = 5
-	FSM_G = 6
-	FSM_H = 7
-	FSM_I = 8
-	FSM_STOP = 9
+	fsm_a = 0
+	fsm_b = 1
+	fsm_c = 2
+	fsm_d = 3
+	fsm_e = 4
+	fsm_f = 5
+	fsm_g = 6
+	fsm_h = 7
+	fsm_i = 8
+	fsm_stop = 9
 	//
 	// Possible parser return values.
 	//
-	PARSER_OK = 0 // parser finished OK
-	PARSER_PZERO = 1 // no digits or number is smaller than +-2^-1022
-	PARSER_MZERO = 2 // number is negative, module smaller
-	PARSER_PINF = 3 // number is higher than +HUGE_VAL
-	PARSER_MINF = 4 // number is lower than -HUGE_VAL
+	parser_ok = 0 // parser finished OK
+	parser_pzero = 1 // no digits or number is smaller than +-2^-1022
+	parser_mzero = 2 // number is negative, module smaller
+	parser_pinf = 3 // number is higher than +HUGE_VAL
+	parser_minf = 4 // number is lower than -HUGE_VAL
 	//
 	// char constants
 	// Note: Modify these if working with non-ASCII encoding
 	//
-	DPOINT = `.`
-	PLUS = `+`
-	MINUS = `-`
-	ZERO = `0`
-	NINE = `9`
-	TEN = u32(10)
+	c_dpoint = `.`
+	c_plus = `+`
+	c_minus = `-`
+	c_zero = `0`
+	c_nine = `9`
+	c_ten = u32(10)
 )
-/**********************************************************************
-*
-* Utility
-*
-**********************************************************************/
+/*
+
+Utility
+
+*/
 
 // NOTE: Modify these if working with non-ASCII encoding
 fn is_digit(x byte) bool {
-	return (x >= ZERO && x <= NINE) == true
+	return (x >= c_zero && x <= c_nine) == true
 }
 
 fn is_space(x byte) bool {
@@ -156,98 +156,98 @@ fn is_exp(x byte) bool {
 	return (x == `E` || x == `e`) == true
 }
 
-/**********************************************************************
-*
-* Support struct
-*
-**********************************************************************/
+/*
+
+Support struct
+
+*/
 
 // The structure is filled by parser, then given to converter.
 pub struct PrepNumber {
 pub mut:
-	negative bool=false // 0 if positive number, 1 if negative
-	exponent int=0 // power of 10 exponent
-	mantissa u64=u64(0) // integer mantissa
+	negative bool // 0 if positive number, 1 if negative
+	exponent int // power of 10 exponent
+	mantissa u64 // integer mantissa
 }
-/**********************************************************************
-*
-* String parser
-* NOTE: #TOFIX need one char after the last char of the number
-*
-**********************************************************************/
+/*
+
+String parser
+NOTE: #TOFIX need one char after the last char of the number
+
+*/
 
 // parser return a support struct with all the parsing information for the converter
 fn parser(s string) (int,PrepNumber) {
-	mut state := FSM_A
+	mut state := fsm_a
 	mut digx := 0
 	mut c := ` ` // initial value for kicking off the state machine
-	mut result := PARSER_OK
+	mut result := parser_ok
 	mut expneg := false
 	mut expexp := 0
 	mut i := 0
 	mut pn := PrepNumber{
 	}
-	for state != FSM_STOP {
+	for state != fsm_stop {
 		match state {
 			// skip starting spaces
-			FSM_A {
+			fsm_a {
 				if is_space(c) == true {
 					c = s[i++]
 				}
 				else {
-					state = FSM_B
+					state = fsm_b
 				}
 			}
 			// check for the sign or point
-			FSM_B {
-				state = FSM_C
-				if c == PLUS {
+			fsm_b {
+				state = fsm_c
+				if c == c_plus {
 					c = s[i++]
 					//i++
 				}
-				else if c == MINUS {
+				else if c == c_minus {
 					pn.negative = true
 					c = s[i++]
 				}
 				else if is_digit(c) {
 				}
-				else if c == DPOINT {
+				else if c == c_dpoint {
 				}
 				else {
-					state = FSM_STOP
+					state = fsm_stop
 				}
 			}
 			// skip the inital zeros
-			FSM_C {
-				if c == ZERO {
+			fsm_c {
+				if c == c_zero {
 					c = s[i++]
 				}
-				else if c == DPOINT {
+				else if c == c_dpoint {
 					c = s[i++]
-					state = FSM_D
+					state = fsm_d
 				}
 				else {
-					state = FSM_E
+					state = fsm_e
 				}
 			}
 			// reading leading zeros in the fractional part of mantissa
-			FSM_D {
-				if c == ZERO {
+			fsm_d {
+				if c == c_zero {
 					c = s[i++]
 					if pn.exponent > -2147483647 {
 						pn.exponent--
 					}
 				}
 				else {
-					state = FSM_F
+					state = fsm_f
 				}
 			}
 			// reading integer part of mantissa
-			FSM_E {
+			fsm_e {
 				if is_digit(c) {
-					if digx < DIGITS {
+					if digx < digits {
 						pn.mantissa *= 10
-						pn.mantissa += u64(c - ZERO)
+						pn.mantissa += u64(c - c_zero)
 						digx++
 					}
 					else if pn.exponent < 2147483647 {
@@ -255,20 +255,20 @@ fn parser(s string) (int,PrepNumber) {
 					}
 					c = s[i++]
 				}
-				else if c == DPOINT {
+				else if c == c_dpoint {
 					c = s[i++]
-					state = FSM_F
+					state = fsm_f
 				}
 				else {
-					state = FSM_F
+					state = fsm_f
 				}
 			}
 			// reading fractional part of mantissa
-			FSM_F {
+			fsm_f {
 				if is_digit(c) {
-					if digx < DIGITS {
+					if digx < digits {
 						pn.mantissa *= 10
-						pn.mantissa += u64(c - ZERO)
+						pn.mantissa += u64(c - c_zero)
 						pn.exponent--
 						digx++
 					}
@@ -276,50 +276,50 @@ fn parser(s string) (int,PrepNumber) {
 				}
 				else if is_exp(c) {
 					c = s[i++]
-					state = FSM_G
+					state = fsm_g
 				}
 				else {
-					state = FSM_G
+					state = fsm_g
 				}
 			}
 			// reading sign of exponent
-			FSM_G {
-				if c == PLUS {
+			fsm_g {
+				if c == c_plus {
 					c = s[i++]
 				}
-				else if c == MINUS {
+				else if c == c_minus {
 					expneg = true
 					c = s[i++]
 				}
-				state = FSM_H
+				state = fsm_h
 			}
 			// skipping leading zeros of exponent
-			FSM_H {
-				if c == ZERO {
+			fsm_h {
+				if c == c_zero {
 					c = s[i++]
 				}
 				else {
-					state = FSM_I
+					state = fsm_i
 				}
 			}
 			// reading exponent digits
-			FSM_I {
+			fsm_i {
 				if is_digit(c) {
 					if expexp < 214748364 {
 						expexp *= 10
-						expexp += int(c - ZERO)
+						expexp += int(c - c_zero)
 					}
 					c = s[i++]
 				}
 				else {
-					state = FSM_STOP
+					state = fsm_stop
 				}
 			}
 			else {
 			}}
 		// C.printf("len: %d i: %d str: %s \n",s.len,i,s[..i])
 		if i >= s.len {
-			state = FSM_STOP
+			state = fsm_stop
 		}
 	}
 	if expneg {
@@ -328,39 +328,39 @@ fn parser(s string) (int,PrepNumber) {
 	pn.exponent += expexp
 	if pn.mantissa == 0 {
 		if pn.negative {
-			result = PARSER_MZERO
+			result = parser_mzero
 		}
 		else {
-			result = PARSER_PZERO
+			result = parser_pzero
 		}
 	}
-	else if (pn.exponent > 309) {
+	else if pn.exponent > 309 {
 		if pn.negative {
-			result = PARSER_MINF
+			result = parser_minf
 		}
 		else {
-			result = PARSER_PINF
+			result = parser_pinf
 		}
 	}
 	else if pn.exponent < -328 {
 		if pn.negative {
-			result = PARSER_MZERO
+			result = parser_mzero
 		}
 		else {
-			result = PARSER_PZERO
+			result = parser_pzero
 		}
 	}
 	return result,pn
 }
 
-/**********************************************************************
-*
-* Converter to the bit form of the f64 number
-*
-**********************************************************************/
+/*
+
+Converter to the bit form of the f64 number
+
+*/
 
 // converter return a u64 with the bit image of the f64 number
-fn converter(pn mut PrepNumber) u64 {
+fn converter(mut pn PrepNumber) u64 {
 	mut binexp := 92
 	mut s2 := u32(0) // 96-bit precision integer
 	mut s1 := u32(0)
@@ -400,18 +400,18 @@ fn converter(pn mut PrepNumber) u64 {
 			s1 = q1
 			s0 = q0
 		}
-		q2 = s2 / TEN
-		r1 = s2 % TEN
+		q2 = s2 / c_ten
+		r1 = s2 % c_ten
 		r2 = (s1>>8) | (r1<<24)
-		q1 = r2 / TEN
-		r1 = r2 % TEN
+		q1 = r2 / c_ten
+		r1 = r2 % c_ten
 		r2 = ((s1 & u32(0xFF))<<16) | (s0>>16) | (r1<<24)
-		r0 = r2 / TEN
-		r1 = r2 % TEN
+		r0 = r2 / c_ten
+		r1 = r2 % c_ten
 		q1 = (q1<<8) | ((r0 & u32(0x00FF0000))>>16)
 		q0 = r0<<16
 		r2 = (s0 & u32(0xFFFF)) | (r1<<16)
-		q0 |= r2 / TEN
+		q0 |= r2 / c_ten
 		s2 = q2
 		s1 = q1
 		s0 = q0
@@ -496,18 +496,18 @@ fn converter(pn mut PrepNumber) u64 {
 	binexp += 1023
 	if binexp > 2046 {
 		if pn.negative {
-			result = DOUBLE_MINUS_INFINITY
+			result = double_minus_infinity
 		}
 		else {
-			result = DOUBLE_PLUS_INFINITY
+			result = double_plus_infinity
 		}
 	}
 	else if binexp < 1 {
 		if pn.negative {
-			result = DOUBLE_MINUS_ZERO
+			result = double_minus_zero
 		}
 		else {
-			result = DOUBLE_PLUS_ZERO
+			result = double_plus_zero
 		}
 	}
 	else if s2 != 0 {
@@ -522,11 +522,11 @@ fn converter(pn mut PrepNumber) u64 {
 	return result
 }
 
-/**********************************************************************
-*
-* Public functions
-*
-**********************************************************************/
+/*
+
+Public functions
+
+*/
 
 // atof64 return a f64 from a string doing a parsing operation
 pub fn atof64(s string) f64 {
@@ -538,25 +538,22 @@ pub fn atof64(s string) f64 {
 	res_parsing,pn = parser(s + ' ') // TODO: need an extra char for now
 	// println(pn)
 	match res_parsing {
-		PARSER_OK {
+		parser_ok {
 			res.u = converter(mut pn)
 		}
-		PARSER_PZERO {
-			res.u = DOUBLE_PLUS_ZERO
+		parser_pzero {
+			res.u = double_plus_zero
 		}
-		PARSER_MZERO {
-			res.u = DOUBLE_MINUS_ZERO
+		parser_mzero {
+			res.u = double_minus_zero
 		}
-		PARSER_PINF {
-			res.u = DOUBLE_PLUS_INFINITY
+		parser_pinf {
+			res.u = double_plus_infinity
 		}
-		PARSER_MINF {
-			res.u = DOUBLE_MINUS_INFINITY
+		parser_minf {
+			res.u = double_minus_infinity
 		}
 		else {
 		}}
 	return res.f
 }
-
-
-

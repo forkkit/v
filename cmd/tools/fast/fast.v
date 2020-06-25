@@ -2,16 +2,13 @@
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 
-import (
-	os
-	time
-	filepath
-)
+import os
+import time
 
 fn main() {
 	exe := os.executable()
-	dir := filepath.dir(exe)
-	vdir := filepath.dir(filepath.dir(filepath.dir(dir)))
+	dir := os.dir(exe)
+	vdir := os.dir(os.dir(os.dir(dir)))
 	if !os.exists('$vdir/v') && !os.is_dir('$vdir/vlib') {
 		println('fast.html generator needs to be located in `v/cmd/tools/fast`')
 	}
@@ -73,17 +70,17 @@ fn main() {
 
 fn exec(s string) string {
 	e := os.exec(s) or { panic(err) }
-	return e.output
+	return e.output.trim_right('\r\n')
 }
 
 // returns milliseconds
 fn measure(cmd string) int {
 	println('Warming up...')
-	for i in 0..3 {
+	for _ in 0..3 {
 		exec(cmd)
 	}
 	println('Building...')
-	ticks := time.ticks()
+	sw := time.new_stopwatch({})
 	exec(cmd)
-	return int(time.ticks() - ticks)
+	return int(sw.elapsed().milliseconds())
 }

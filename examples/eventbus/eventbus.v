@@ -1,8 +1,6 @@
 module main
 
-import (
-	some_module
-)
+import some_module
 
 fn main(){
 	mut sub := some_module.get_subscriber()
@@ -10,6 +8,6 @@ fn main(){
 	some_module.do_work()
 }
 
-fn on_error(sender voidptr, e &some_module.Error) {
+fn on_error(sender voidptr, e &some_module.Error, x voidptr) {
 	println(e.message)
 }

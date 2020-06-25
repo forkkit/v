@@ -1,62 +1,84 @@
-/**********************************************************************
-*
-* f32 to string
-*
-* Copyright (c) 2019-2020 Dario Deledda. All rights reserved.
-* Use of this source code is governed by an MIT license
-* that can be found in the LICENSE file.
-*
-* This file contains the f32 to string functions
-*
-* These functions are based on the work of:
-* Publication:PLDI 2018: Proceedings of the 39th ACM SIGPLAN
-* Conference on Programming Language Design and ImplementationJune 2018
-* Pages 270–282 https://doi.org/10.1145/3192366.3192369
-*
-* inspired by the Go version here:
-* https://github.com/cespare/ryu/tree/ba56a33f39e3bbbfa409095d0f9ae168a595feea
-*
-**********************************************************************/
+/*
+
+f32 to string
+
+Copyright (c) 2019-2020 Dario Deledda. All rights reserved.
+Use of this source code is governed by an MIT license
+that can be found in the LICENSE file.
+
+This file contains the f32 to string functions
+
+These functions are based on the work of:
+Publication:PLDI 2018: Proceedings of the 39th ACM SIGPLAN
+Conference on Programming Language Design and ImplementationJune 2018
+Pages 270–282 https://doi.org/10.1145/3192366.3192369
+
+inspired by the Go version here:
+https://github.com/cespare/ryu/tree/ba56a33f39e3bbbfa409095d0f9ae168a595feea
+
+*/
 module ftoa
 
 // dec32 is a floating decimal type representing m * 10^e.
 struct Dec32 {
 mut:
-	m u32 = u32(0)
+	m u32 = 0
 	e int = 0
 }
 
 // support union for convert f32 to u32
 union Uf32 {
 mut:
-	f f32 = f32(0)
+	f f32 = 0
 	u u32
 }
 
-/******************************************************************************
-*
-* Conversion Functions
-*
-******************************************************************************/
+// pow of ten table used by n_digit reduction
+const(
+	ten_pow_table_32 = [
+		u32(1),
+		u32(10),
+		u32(100),
+		u32(1000),
+		u32(10000),
+		u32(100000),
+		u32(1000000),
+		u32(10000000),
+		u32(100000000),
+		u32(1000000000),
+		u32(10000000000),
+		u32(100000000000),
+	]
+)
+
+/*
+
+ Conversion Functions
+
+*/
 const(
 	mantbits32  = u32(23)
 	expbits32   = u32(8)
-	bias32      = u32(127) // f32 exponent bias
+	bias32      = 127 // f32 exponent bias
 	maxexp32    = 255
 )
 
 // max 46 char
 // -3.40282346638528859811704183484516925440e+38
-fn (d Dec32) get_string_32(neg bool, n_digit int) string {
-	mut out     := d.m
-	mut out_len := decimal_len_32(out)
+fn (d Dec32) get_string_32(neg bool, i_n_digit int, i_pad_digit int) string {
+	n_digit          := i_n_digit + 1
+	pad_digit        := i_pad_digit + 1
+	mut out          := d.m
+	mut out_len      := decimal_len_32(out)
+	out_len_original := out_len
+
+	mut fw_zeros := 0
+	if pad_digit > out_len {
+		fw_zeros = pad_digit -out_len
+	}
 
 	mut buf := [byte(0)].repeat(out_len + 5 + 1 +1) // sign + mant_len + . +  e + e_sign + exp_len(2) + \0
 	mut i := 0
-
-	if n_digit > 0 && out_len > n_digit {
-		out_len = n_digit+1
-	}
 
 	if neg {
 		buf[i]=`-`
@@ -66,6 +88,13 @@ fn (d Dec32) get_string_32(neg bool, n_digit int) string {
 	mut disp := 0
 	if out_len <= 1 {
 		disp = 1
+	}
+
+	if n_digit < out_len {
+		//println("orig: ${out_len_original}")
+		out += ten_pow_table_32[out_len - n_digit - 1] * 5  // round to up
+		out /= ten_pow_table_32[out_len - n_digit]
+		out_len = n_digit
 	}
 
 	y := i + out_len
@@ -88,6 +117,11 @@ fn (d Dec32) get_string_32(neg bool, n_digit int) string {
 		i++
 	}
 
+	for fw_zeros > 0 {
+		buf[i++] = `0`
+		fw_zeros--
+	}
+
 	/*
 	x=0
 	for x<buf.len {
@@ -100,7 +134,7 @@ fn (d Dec32) get_string_32(neg bool, n_digit int) string {
 	buf[i]=`e`
 	i++
 
-	mut exp := d.e + out_len - 1
+	mut exp := d.e + out_len_original - 1
 	if exp < 0 {
 		buf[i]=`-`
 		i++
@@ -155,10 +189,10 @@ pub fn f32_to_decimal(mant u32, exp u32) Dec32 {
 	if exp == 0 {
 		// We subtract 2 so that the bounds computation has
 		// 2 additional bits.
-		e2 = 1 - bias32 - mantbits32 - 2
+		e2 = 1 - bias32 - int(mantbits32) - 2
 		m2 = mant
 	} else {
-		e2 = int(exp) - bias32 - mantbits32 - 2
+		e2 = int(exp) - bias32 - int(mantbits32) - 2
 		m2 = (u32(1) << mantbits32) | mant
 	}
 	even          := (m2 & 1) == 0
@@ -318,5 +352,32 @@ pub fn f32_to_str(f f32, n_digit int) string {
 	}
 
 	//println("${d.m} ${d.e}")
-	return d.get_string_32(neg, n_digit)
+	return d.get_string_32(neg, n_digit,0)
+}
+
+// f32_to_str return a string in scientific notation with max n_digit after the dot
+pub fn f32_to_str_pad(f f32, n_digit int) string {
+	mut u1 := Uf32{}
+	u1.f = f
+	u := u1.u
+
+	neg   := (u>>(mantbits32+expbits32)) != 0
+	mant  := u & ((u32(1)<<mantbits32) - u32(1))
+	exp   := (u >> mantbits32) & ((u32(1)<<expbits32) - u32(1))
+
+	//println("${neg} ${mant} e ${exp-bias32}")
+
+	// Exit early for easy cases.
+	if (exp == maxexp32) || (exp == 0 && mant == 0) {
+		return get_string_special(neg, exp == 0, mant == 0)
+	}
+
+	mut d, ok := f32_to_decimal_exact_int(mant, exp)
+	if !ok {
+		//println("with exp form")
+		d = f32_to_decimal(mant, exp)
+	}
+
+	//println("${d.m} ${d.e}")
+	return d.get_string_32(neg, n_digit, n_digit)
 }

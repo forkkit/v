@@ -6,15 +6,6 @@ module builtin
 __global g_m2_buf byteptr
 __global g_m2_ptr byteptr
 
-fn init() {
-	$if windows {
-		if is_atty(1) > 0 {
-			C.SetConsoleMode(C.GetStdHandle(C.STD_OUTPUT_HANDLE), C.ENABLE_PROCESSED_OUTPUT | 0x0004) // ENABLE_VIRTUAL_TERMINAL_PROCESSING
-			C.setbuf(C.stdout, 0)
-		}
-	}
-}
-
 pub fn exit(code int) {
 	C.exit(code)
 }
@@ -30,26 +21,6 @@ fn on_panic(f fn(int)int) {
 }
 */
 
-pub fn print_backtrace_skipping_top_frames(skipframes int) {
-	$if windows {
-		$if msvc {
-			if print_backtrace_skipping_top_frames_msvc(skipframes) {
-				return
-			}
-		}
-		$if mingw {
-			if print_backtrace_skipping_top_frames_mingw(skipframes) {
-				return
-			}
-		}
-	} $else {
-		if print_backtrace_skipping_top_frames_nix(skipframes) {
-			return
-		}
-	}
-	println('print_backtrace_skipping_top_frames is not implemented on this platform for now...\n')
-}
-
 pub fn print_backtrace() {
 	// at the time of backtrace_symbols_fd call, the C stack would look something like this:
 	// 1 frame for print_backtrace_skipping_top_frames
@@ -61,26 +32,33 @@ pub fn print_backtrace() {
 
 // replaces panic when -debug arg is passed
 fn panic_debug(line_no int, file, mod, fn_name, s string) {
-	println('================ V panic ================')
-	println('   module: $mod')
-	println(' function: ${fn_name}()')
-	println('     file: $file')
-	println('     line: ' + line_no.str())
-	println('  message: $s')
-	println('=========================================')
+	// NB: the order here is important for a stabler test output
+	// module is less likely to change than function, etc...
+	// During edits, the line number will change most frequently,
+	// so it is last
+	eprintln('================ V panic ================')
+	eprintln('   module: $mod')
+	eprintln(' function: ${fn_name}()')
+	eprintln('  message: $s')
+	eprintln('     file: $file')
+	eprintln('     line: ' + line_no.str())
+	eprintln('=========================================')
 	print_backtrace_skipping_top_frames(1)
+	break_if_debugger_attached()
 	C.exit(1)
 }
 
 pub fn panic(s string) {
-	println('V panic: $s')
+	eprintln('V panic: $s')
 	print_backtrace()
+	break_if_debugger_attached()
 	C.exit(1)
 }
 
 pub fn eprintln(s string) {
-	if isnil(s.str) {
-		panic('eprintln(NIL)')
+	// eprintln is used in panics, so it should not fail at all
+	if s.str == 0 {
+		eprintln('eprintln(NIL)')
 	}
 	$if !windows {
 		C.fflush(C.stdout)
@@ -94,8 +72,8 @@ pub fn eprintln(s string) {
 }
 
 pub fn eprint(s string) {
-	if isnil(s.str) {
-		panic('eprint(NIL)')
+	if s.str == 0 {
+		eprintln('eprint(NIL)')
 	}
 	$if !windows {
 		C.fflush(C.stdout)
@@ -115,11 +93,35 @@ pub fn print(s string) {
 			wide_str := s.to_wide()
 			wide_len := C.wcslen(wide_str)
 			C.WriteConsole(output_handle, wide_str, wide_len, &bytes_written, 0)
+			unsafe {
+				free(wide_str)
+			}
 		} else {
 			C.WriteFile(output_handle, s.str, s.len, &bytes_written, 0)
 		}
 	} $else {
 		C.printf('%.*s', s.len, s.str)
+	}
+}
+
+const (
+	new_line_character = '\n'
+)
+pub fn println(s string) {
+	$if windows {
+		print(s)
+		print(new_line_character)
+	} $else {
+		//  TODO: a syscall sys_write on linux works, except for the v repl.
+		//  Probably it is a stdio buffering issue. Needs more testing...
+		//	$if linux {
+		//		$if !android {
+		//			snl := s + '\n'
+		//			C.syscall(/* sys_write */ 1, /* stdout_value */ 1, snl.str, s.len+1)
+		//			return
+		//		}
+		//	}
+		C.printf('%.*s\n', s.len, s.str)
 	}
 }
 
@@ -158,17 +160,30 @@ TODO
 	print_backtrace()
 #endif
 */
-
 }
+
+[unsafe_fn]
+pub fn v_realloc(b byteptr, n int) byteptr {
+	ptr := C.realloc(b, n)
+	if ptr == 0 {
+		panic('realloc($n) failed')
+	}
+
+	return ptr
+}
+
 pub fn v_calloc(n int) byteptr {
 	return C.calloc(n, 1)
-	}
+}
 
 pub fn vcalloc(n int) byteptr {
-	if n <= 0 {
+	if n < 0 {
 		panic('calloc(<=0)')
+	} else if n == 0 {
+		return byteptr(0)
+	} else {
+		return C.calloc(n, 1)
 	}
-	return C.calloc(n, 1)
 }
 
 [unsafe_fn]
@@ -177,6 +192,9 @@ pub fn free(ptr voidptr) {
 }
 
 pub fn memdup(src voidptr, sz int) voidptr {
+	if sz == 0 {
+		return vcalloc(1)
+	}
 	mem := malloc(sz)
 	return C.memcpy(mem, src, sz)
 }
@@ -196,27 +214,36 @@ pub fn is_atty(fd int) int {
 	}
 }
 
-/*
-fn C.va_start()
-fn C.va_end()
-fn C.vsnprintf() int
-fn C.vsprintf() int
-
-pub fn str2_(fmt charptr, ...) string {
-       argptr := C.va_list{}
-        C.va_start(argptr, fmt)
-        len := C.vsnprintf(0, 0, fmt, argptr) + 1
-C.va_end(argptr)
-        buf := malloc(len)
-        C.va_start(argptr, fmt)
-        C.vsprintf(charptr(buf), fmt, argptr)
-        C.va_end(argptr)
-//#ifdef DEBUG_ALLOC
-//        puts("_STR:");
-//        puts(buf);
-//#endif
-        return tos2(buf)
+fn __as_cast(obj voidptr, obj_type, expected_type int) voidptr {
+	if obj_type != expected_type {
+		panic('as cast: cannot cast $obj_type to $expected_type')
+	}
+	return obj
 }
-*/
 
-
+// VAssertMetaInfo is used during assertions. An instance of it
+// is filled in by compile time generated code, when an assertion fails.
+struct VAssertMetaInfo {
+pub:
+	fpath   string // the source file path of the assertion
+	line_nr int    // the line number of the assertion
+	fn_name string // the function name in which the assertion is
+	src     string // the actual source line of the assertion
+	op      string // the operation of the assertion, i.e. '==', '<', 'call', etc ...
+	llabel  string // the left side of the infix expressions as source
+	rlabel  string // the right side of the infix expressions as source
+	lvalue  string // the stringified *actual value* of the left side of a failed assertion
+	rvalue  string // the stringified *actual value* of the right side of a failed assertion
+}
+fn __print_assert_failure(i &VAssertMetaInfo) {
+	eprintln('${i.fpath}:${i.line_nr+1}: FAIL: fn ${i.fn_name}: assert ${i.src}')
+	if i.op.len > 0 && i.op != 'call' {
+		eprintln('   left value: ${i.llabel} = ${i.lvalue}')
+		if i.rlabel == i.rvalue {
+			eprintln('  right value: $i.rlabel')
+		}
+		else {
+			eprintln('  right value: ${i.rlabel} = ${i.rvalue}')
+		}
+	}
+}

@@ -7,10 +7,10 @@
 module crc32
 
 // polynomials
-const (
-	ieee       = 0xedb88320
-	castagnoli = 0x82f63b78
-	koopman    = 0xeb31d82e
+pub const (
+	ieee       = u32(0xedb88320)
+	castagnoli = u32(0x82f63b78)
+	koopman    = u32(0xeb31d82e)
 )
 
 // The size of a CRC-32 checksum in bytes.
@@ -23,10 +23,10 @@ mut:
 	table []u32
 }
 
-fn(c mut Crc32) generate_table(poly int) {
+fn(mut c Crc32) generate_table(poly int) {
 	for i in 0..256 {
 		mut crc := u32(i)
-		for j in 0..8 {
+		for _ in 0..8 {
 			if crc & u32(1) == u32(1) {
 				crc = (crc >> 1) ^ u32(poly)
 			} else {
@@ -40,7 +40,7 @@ fn(c mut Crc32) generate_table(poly int) {
 fn(c &Crc32) sum32(b []byte) u32 {
 	mut crc := ~u32(0)
 	for i in 0..b.len {
-		crc = c.table[byte(crc)^b[i]] ^ u32(crc >> u32(8))
+		crc = c.table[byte(crc)^b[i]] ^ (crc >> 8)
 	}
 	return ~crc
 }
@@ -58,6 +58,6 @@ pub fn new(poly int) &Crc32 {
 
 // calculate crc32 using ieee
 pub fn sum(b []byte) u32 {
-	c := new(ieee)
+	c := new(int(ieee))
 	return c.sum32(b)
 }

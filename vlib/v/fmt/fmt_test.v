@@ -1,12 +1,12 @@
-import (
-	os
-	term
-	benchmark
-	filepath
-	v.fmt
-	v.parser
-	v.table
-)
+import os
+import term
+import benchmark
+import v.ast
+import v.fmt
+import v.parser
+import v.table
+import v.pref
+import v.util
 
 const (
 	error_missing_vexe = 1
@@ -21,11 +21,9 @@ fn test_fmt() {
 		eprintln('VEXE must be set')
 		exit(error_missing_vexe)
 	}
-	vroot := filepath.dir(vexe)
-	tmpfolder := os.tmpdir()
-	diff_cmd := find_working_diff_command() or {
-		''
-	}
+	vroot := os.dir(vexe)
+	tmpfolder := os.temp_dir()
+	diff_cmd := util.find_working_diff_command() or { '' }
 	mut fmt_bench := benchmark.new_benchmark()
 	// Lookup the existing test _input.vv files:
 	input_files := os.walk_ext('$vroot/vlib/v/fmt/tests', '_input.vv')
@@ -33,7 +31,7 @@ fn test_fmt() {
 	for istep, ipath in input_files {
 		fmt_bench.cstep = istep
 		fmt_bench.step()
-		ifilename := filepath.filename(ipath)
+		ifilename := os.file_name(ipath)
 		opath := ipath.replace('_input.vv', '_expected.vv')
 		if !os.exists(opath) {
 			fmt_bench.fail()
@@ -46,8 +44,12 @@ fn test_fmt() {
 			continue
 		}
 		table := table.new_table()
-		file_ast := parser.parse_file(ipath, table, .skip_comments)
-		result_ocontent := fmt.fmt(file_ast, table)
+		file_ast := parser.parse_file(ipath, table, .parse_comments, &pref.Preferences{
+				is_fmt: true
+			}, &ast.Scope{
+				parent: 0
+		})
+		result_ocontent := fmt.fmt(file_ast, table, false)
 		if expected_ocontent != result_ocontent {
 			fmt_bench.fail()
 			eprintln(fmt_bench.step_message_fail('file ${ipath} after formatting, does not look as expected.'))
@@ -55,9 +57,9 @@ fn test_fmt() {
 				eprintln('>> sorry, but no working "diff" CLI command can be found')
 				continue
 			}
-			vfmt_result_file := filepath.join(tmpfolder,'vfmt_run_over_${ifilename}')
+			vfmt_result_file := os.join_path(tmpfolder, 'vfmt_run_over_${ifilename}')
 			os.write_file(vfmt_result_file, result_ocontent)
-			os.system('$diff_cmd --minimal  --text   --unified=2 --show-function-line="fn " "$opath" "$vfmt_result_file"')
+            eprintln(util.color_compare_files(diff_cmd, opath, vfmt_result_file))
 			continue
 		}
 		fmt_bench.ok()
@@ -69,16 +71,4 @@ fn test_fmt() {
 	if fmt_bench.nfail > 0 {
 		exit(error_failed_tests)
 	}
-}
-
-fn find_working_diff_command() ?string {
-	for diffcmd in ['colordiff', 'diff', 'colordiff.exe', 'diff.exe'] {
-		p := os.exec('$diffcmd --version') or {
-			continue
-		}
-		if p.exit_code == 0 {
-			return diffcmd
-		}
-	}
-	return error('no working diff command found')
 }

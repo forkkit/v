@@ -8,18 +8,16 @@
 
 module md5
 
-import (
-	math.bits
-	encoding.binary
-)
+import math.bits
+import encoding.binary
 
-fn block_generic(dig mut Digest, p []byte) {
+fn block_generic(mut dig Digest, p []byte) {
 	// load state
 	mut a := dig.s[0]
 	mut b := dig.s[1]
 	mut c := dig.s[2]
 	mut d := dig.s[3]
-	
+
 	for i := 0; i <= p.len-block_size; i += block_size {
 		mut q := p[i..]
 		q = q[..block_size]

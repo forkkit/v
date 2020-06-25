@@ -14,11 +14,10 @@ fn version_cmd() Command {
 		name: 'version'
 		description: 'Prints version information',
 		execute: version_func,
-		parent: 0
 	}
 }
 
-fn version_func(version_cmd cli.Command) {
+fn version_func(version_cmd Command) {
 	cmd := version_cmd.parent
 	version := '${cmd.name} v${cmd.version}'
 	println(version)

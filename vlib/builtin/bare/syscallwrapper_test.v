@@ -1,14 +1,11 @@
-import (
-	os
-	filepath
-)
+import os
 
 fn test_syscallwrappers() {
 	if true { return }
 	$if linux {
 		$if x64 {
 			exe := os.executable()
-			vdir := filepath.dir(exe)
+			vdir := os.dir(exe)
 			if vdir.len > 1 {
 				dot_checks := vdir + "/.checks"
 				assert os.is_dir(dot_checks)

@@ -5,7 +5,7 @@ module cmdline
 // param: '-d'
 // ret: ['aa', 'bb', 'cc']
 pub fn options(args []string, param string) []string {
-	mut flags := []string
+	mut flags := []string{}
 	for i, v in args {
 		if v == param {
 			if i + 1 < args.len {
@@ -39,11 +39,9 @@ pub fn option(args []string, param string, def string) string {
 // what: ['test']
 // ret: ['-stat']
 pub fn options_before(args []string, what []string) []string {
-	mut found := false
-	mut args_before := []string
+	mut args_before := []string{}
 	for a in args {
 		if a in what {
-			found = true
 			break
 		}
 		args_before << a
@@ -57,7 +55,7 @@ pub fn options_before(args []string, what []string) []string {
 // ret: ['aaa.v']
 pub fn options_after(args []string, what []string) []string {
 	mut found := false
-	mut args_after := []string
+	mut args_after := []string{}
 	for a in args {
 		if a in what {
 			found = true

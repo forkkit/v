@@ -9,13 +9,18 @@ const (
 )
 
 // NOTE: temp until we have []bytes(buff)
-fn c_array_to_bytes_tmp(len, buffer voidptr) []byte {
-	mut arr := []byte
+fn c_array_to_bytes_tmp(len int, buffer voidptr) []byte {
+
+	mut arr := []byte{len:len, cap:1}
+	arr.data = buffer
+	/*
+
 	arr = array {
 		len: len
 		cap: 1
 		element_size: 1
 		data: buffer
 	}
+	*/
 	return arr
 }

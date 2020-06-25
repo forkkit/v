@@ -4,9 +4,10 @@
 
 module gl
 
-// import os
 import gx
 import glm
+
+// import os
 
 // import darwin
 
@@ -18,7 +19,7 @@ pub fn (s Shader) str() string {
 }
 
 pub const (
-	TEXT_VERT   = '#version 330 core
+	text_vert   = '#version 330 core
 layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>
 out vec2 TexCoords;
 
@@ -29,7 +30,7 @@ void main()
     gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);
     TexCoords = vertex.zw;
 }  '
-	TEXT_FRAG   = '#version 330 core
+	text_frag   = '#version 330 core
 in vec2 TexCoords;
 out vec4 color;
 
@@ -41,7 +42,7 @@ void main()
     vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoords).r);
     color = vec4(textColor, 1.0) * sampled;
 }  '
-	SIMPLE_VERT = ' #version 330 core
+	simple_vert = ' #version 330 core
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aColor;
@@ -62,7 +63,7 @@ void main() {
     TexCoord = aTexCoord;
 }
 '
-	SIMPLE_FRAG = '#version 330 core
+	simple_frag = '#version 330 core
 
 out vec4 FragColor;
 uniform vec3 color;
@@ -119,24 +120,25 @@ pub fn new_shader(name string) Shader {
 	mut vertex_src := ''
 	mut fragment_src := ''
 	if name == 'text' {
-		vertex_src = TEXT_VERT
-		fragment_src = TEXT_FRAG
+		vertex_src = text_vert
+		fragment_src = text_frag
 	}
 	else if name == 'simple' {
 		// println('new shader simple!!!')
-		// println(SIMPLE_VERT)
-		vertex_src = SIMPLE_VERT
-		fragment_src = SIMPLE_FRAG
+		// println(simple_vert)
+		vertex_src = simple_vert
+		fragment_src = simple_frag
 	}
 	// ////////////////////////////////////////
 	vertex_shader := gl.create_shader(C.GL_VERTEX_SHADER)
 	gl.shader_source(vertex_shader, 1, vertex_src, 0)
 	gl.compile_shader(vertex_shader)
 	if gl.shader_compile_status(vertex_shader) == 0 {
-		log := gl.shader_info_log(vertex_shader)
-		println('shader $vertex_shader compilation failed')
-		println('shader source = $vertex_src')
-		println('shader failed to compile')
+		cerror := gl.shader_info_log(vertex_shader)
+		eprintln('vertex ${vertex_shader} shader compilation failed')
+		eprintln('shader source = ${vertex_src}')
+		eprintln('failed to compile, with error')
+		eprintln(cerror)
 		exit(1)
 	}
 	// fragment shader
@@ -145,8 +147,11 @@ pub fn new_shader(name string) Shader {
 	gl.shader_source(fragment_shader, 1, fragment_src, 0)
 	gl.compile_shader(fragment_shader)
 	if gl.shader_compile_status(fragment_shader) == 0 {
-		println('fragment $fragment_shader shader compilation failed')
-		println('shader failed to compile')
+		cerror := gl.shader_info_log(fragment_shader)
+		eprintln('fragment ${fragment_shader} shader compilation failed')
+		eprintln('shader source = ${fragment_src}')
+		eprintln('failed to compile, with error')
+		eprintln(cerror)
 		exit(1)
 	}
 	// link shaders
@@ -157,10 +162,12 @@ pub fn new_shader(name string) Shader {
 	// check for linking errors
 	success := gl.get_program_link_status(shader_program)
 	if success == 0 {
-		println('shader compilation failed')
-		println('vertex source = $vertex_src')
-		println('fragment source = $fragment_src')
-		println('shader failed to compile')
+		cerror := gl.shader_info_log(shader_program)
+		eprintln('shader program linking failed')
+		eprintln('vertex source = ${vertex_src}')
+		eprintln('fragment source = ${fragment_src}')
+		eprintln('failed to compile, with error')
+		eprintln(cerror)
 		exit(1)
 	}
 	shader := Shader {
@@ -173,7 +180,6 @@ pub fn (s Shader) use() {
 	gl.use_program(s.program_id)
 }
 
-fn C.glGetUniformLocation() int
 fn C.glUniformMatrix4fv()
 fn C.glUniform1i()
 fn C.glUniform3f()
@@ -195,4 +201,3 @@ pub fn (s Shader) set_int(str string, n int) {
 pub fn (s Shader) set_color(str string, c gx.Color) {
 	C.glUniform3f(s.uni_location(str), f32(c.r) / 255.0, f32(c.g) / 255.0, f32(c.b) / 255.0)
 }
-

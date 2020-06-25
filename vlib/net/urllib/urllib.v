@@ -182,7 +182,7 @@ fn unescape(s_ string, mode EncodingMode) ?string {
 					// That is, you can use escaping in the zone identifier but not
 					// to introduce bytes you couldn't just write directly.
 					// But Windows puts spaces here! Yay.
-					v := (unhex(s[i + 1])<<byte(4) | unhex(s[i + 2]))
+					v := ( (unhex(s[i + 1])<<byte(4)) | unhex(s[i + 2]))
 					if s[i..i + 3] != '%25' && v != ` ` && should_escape(v, .encode_host) {
 						error(error_msg(err_msg_escape, s[i..i + 3]))
 					}
@@ -208,7 +208,7 @@ fn unescape(s_ string, mode EncodingMode) ?string {
 		x := s[i]
 		match x {
 			`%` {
-				t.write((unhex(s[i + 1])<<byte(4) | unhex(s[i + 2])).str())
+				t.write( ((unhex(s[i + 1])<<byte(4)) | unhex(s[i + 2])).str() )
 				i += 2
 			}
 			`+` {
@@ -257,7 +257,7 @@ fn escape(s string, mode EncodingMode) string {
 		return s
 	}
 	buf := [byte(0)].repeat(64)
-	mut t := []byte
+	mut t := []byte{}
 	required := s.len + 2 * hex_count
 	if required <= buf.len {
 		t = buf[..required]
@@ -651,7 +651,7 @@ fn parse_host(host string) ?string {
 // - set_path('/foo%2fbar') will set path='/foo/bar' and raw_path='/foo%2fbar'
 // set_path will return an error only if the provided path contains an invalid
 // escaping.
-pub fn (u mut URL) set_path(p string) ?bool {
+pub fn (mut u URL) set_path(p string) ?bool {
 	path := unescape(p, .encode_path) or {
 		return error(err)
 	}
@@ -822,7 +822,7 @@ pub fn (u URL) str() string {
 // interpreted as a key set to an empty value.
 pub fn parse_query(query string) ?Values {
 	mut m := new_values()
-	_ = parse_query_values(mut m, query) or {
+	parse_query_values(mut m, query) or {
 		return error(err)
 	}
 	return m
@@ -832,11 +832,11 @@ pub fn parse_query(query string) ?Values {
 // but any errors will be silent
 fn parse_query_silent(query string) Values {
 	mut m := new_values()
-	_ = parse_query_values(mut m, query)
+	parse_query_values(mut m, query)
 	return m
 }
 
-fn parse_query_values(m mut Values, query string) ?bool {
+fn parse_query_values(mut m Values, query string) ?bool {
 	mut had_error := false
 	mut q := query
 	for q != '' {
@@ -879,11 +879,11 @@ fn parse_query_values(m mut Values, query string) ?bool {
 // encode encodes the values into ``URL encoded'' form
 // ('bar=baz&foo=quux') sorted by key.
 pub fn (v Values) encode() string {
-	if v.size == 0 {
+	if v.len == 0 {
 		return ''
 	}
 	mut buf := strings.new_builder(200)
-	mut keys := []string
+	mut keys := []string{}
 	for k, _ in v.data {
 		keys << k
 	}
@@ -922,7 +922,7 @@ fn resolve_path(base, ref string) string {
 	if full == '' {
 		return ''
 	}
-	mut dst := []string
+	mut dst := []string{}
 	src := full.split('/')
 	for _, elem in src {
 		match elem {
@@ -1131,4 +1131,3 @@ fn unhex(c byte) byte {
 	}
 	return 0
 }
-

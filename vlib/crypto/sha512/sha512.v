@@ -7,10 +7,8 @@
 // Last commit: https://github.com/golang/go/commit/3ce865d7a0b88714cc433454ae2370a105210c01
 module sha512
 
-import (
-	crypto
-	encoding.binary
-)
+import crypto
+import encoding.binary
 
 pub const (
 // size is the size, in bytes, of a SHA-512 checksum.
@@ -27,39 +25,39 @@ pub const (
 )
 
 const (
-	Chunk = 128
-	init0 = 0x6a09e667f3bcc908
-	init1 = 0xbb67ae8584caa73b
-	init2 = 0x3c6ef372fe94f82b
-	init3 = 0xa54ff53a5f1d36f1
-	init4 = 0x510e527fade682d1
-	init5 = 0x9b05688c2b3e6c1f
-	init6 = 0x1f83d9abfb41bd6b
-	init7 = 0x5be0cd19137e2179
-	init0_224 = 0x8c3d37c819544da2
-	init1_224 = 0x73e1996689dcd4d6
-	init2_224 = 0x1dfab7ae32ff9c82
-	init3_224 = 0x679dd514582f9fcf
-	init4_224 = 0x0f6d2b697bd44da8
-	init5_224 = 0x77e36f7304c48942
-	init6_224 = 0x3f9d85a86a1d36c8
-	init7_224 = 0x1112e6ad91d692a1
-	init0_256 = 0x22312194fc2bf72c
-	init1_256 = 0x9f555fa3c84c64c2
-	init2_256 = 0x2393b86b6f53b151
-	init3_256 = 0x963877195940eabd
-	init4_256 = 0x96283ee2a88effe3
-	init5_256 = 0xbe5e1e2553863992
-	init6_256 = 0x2b0199fc2c85b8aa
-	init7_256 = 0x0eb72ddc81c52ca2
-	init0_384 = 0xcbbb9d5dc1059ed8
-	init1_384 = 0x629a292a367cd507
-	init2_384 = 0x9159015a3070dd17
-	init3_384 = 0x152fecd8f70e5939
-	init4_384 = 0x67332667ffc00b31
-	init5_384 = 0x8eb44a8768581511
-	init6_384 = 0xdb0c2e0d64f98fa7
-	init7_384 = 0x47b5481dbefa4fa4
+	chunk = 128
+	init0 = u64(0x6a09e667f3bcc908)
+	init1 = u64(0xbb67ae8584caa73b)
+	init2 = u64(0x3c6ef372fe94f82b)
+	init3 = u64(0xa54ff53a5f1d36f1)
+	init4 = u64(0x510e527fade682d1)
+	init5 = u64(0x9b05688c2b3e6c1f)
+	init6 = u64(0x1f83d9abfb41bd6b)
+	init7 = u64(0x5be0cd19137e2179)
+	init0_224 = u64(0x8c3d37c819544da2)
+	init1_224 = u64(0x73e1996689dcd4d6)
+	init2_224 = u64(0x1dfab7ae32ff9c82)
+	init3_224 = u64(0x679dd514582f9fcf)
+	init4_224 = u64(0x0f6d2b697bd44da8)
+	init5_224 = u64(0x77e36f7304c48942)
+	init6_224 = u64(0x3f9d85a86a1d36c8)
+	init7_224 = u64(0x1112e6ad91d692a1)
+	init0_256 = u64(0x22312194fc2bf72c)
+	init1_256 = u64(0x9f555fa3c84c64c2)
+	init2_256 = u64(0x2393b86b6f53b151)
+	init3_256 = u64(0x963877195940eabd)
+	init4_256 = u64(0x96283ee2a88effe3)
+	init5_256 = u64(0xbe5e1e2553863992)
+	init6_256 = u64(0x2b0199fc2c85b8aa)
+	init7_256 = u64(0x0eb72ddc81c52ca2)
+	init0_384 = u64(0xcbbb9d5dc1059ed8)
+	init1_384 = u64(0x629a292a367cd507)
+	init2_384 = u64(0x9159015a3070dd17)
+	init3_384 = u64(0x152fecd8f70e5939)
+	init4_384 = u64(0x67332667ffc00b31)
+	init5_384 = u64(0x8eb44a8768581511)
+	init6_384 = u64(0xdb0c2e0d64f98fa7)
+	init7_384 = u64(0x47b5481dbefa4fa4)
 )
 // digest represents the partial evaluation of a checksum.
 struct Digest {
@@ -71,9 +69,9 @@ mut:
 	function crypto.Hash
 }
 
-fn (d mut Digest) reset() {
+fn (mut d Digest) reset() {
 	d.h = [u64(0)].repeat(8)
-	d.x = [byte(0)].repeat(Chunk)
+	d.x = [byte(0)].repeat(chunk)
 	match d.function {
 		.sha384 {
 			d.h[0] = init0_384
@@ -148,14 +146,14 @@ fn new384() &Digest {
 	return new_digest(.sha384)
 }
 
-fn (d mut Digest) write(p_ []byte) int {
+fn (mut d Digest) write(p_ []byte) int {
 	mut p := p_
 	nn := p.len
 	d.len += u64(nn)
 	if d.nx > 0 {
 		n := copy(d.x[d.nx..], p)
 		d.nx += n
-		if d.nx == Chunk {
+		if d.nx == chunk{
 			block(mut d, d.x)
 			d.nx = 0
 		}
@@ -166,8 +164,8 @@ fn (d mut Digest) write(p_ []byte) int {
 			p = p[n..]
 		}
 	}
-	if p.len >= Chunk {
-		n := p.len & ~(Chunk - 1)
+	if p.len >= chunk{
+		n := p.len & ~(chunk- 1)
 		block(mut d, p[..n])
 		if n >= p.len {
 			p = []
@@ -211,7 +209,7 @@ fn (d &Digest) sum(b_in []byte) []byte {
 	return b_out
 }
 
-fn (d mut Digest) checksum() []byte {
+fn (mut d Digest) checksum() []byte {
 	// Padding. Add a 1 bit and 0 bits until 112 bytes mod 128.
 	mut len := d.len
 	mut tmp := [byte(0)].repeat(128)
@@ -281,7 +279,7 @@ pub fn sum512_256(data []byte) []byte {
 	return sum256
 }
 
-fn block(dig mut Digest, p []byte) {
+fn block(mut dig Digest, p []byte) {
 	// For now just use block_generic until we have specific
 	// architecture optimized versions
 	block_generic(mut dig, p)
@@ -322,4 +320,3 @@ pub fn hexhash_512_224(s string) string {
 pub fn hexhash_512_256(s string) string {
 	return sum512_256(s.bytes()).hex()
 }
-

@@ -30,17 +30,17 @@ import rand
 import time
 
 const (
-	inf = f64(1e+10)
-	eps = f64(1e-4)
-	f_0 = f64(0.0)
+	inf = 1e+10
+	eps = 1e-4
+	f_0 = 0.0
 )
 
 /***************************** 3D Vector utility struct **********************/
 struct Vec {
 mut:
-   x f64 = f64(0.0)
-   y f64 = f64(0.0)
-   z f64 = f64(0.0)
+   x f64 = 0.0
+   y f64 = 0.0
+   z f64 = 0.0
 }
 
 [inline]
@@ -79,7 +79,7 @@ fn (v Vec) cross (b Vec) Vec{
 
 [inline]
 fn (v Vec) norm () Vec {
-	tmp_norm := f64(1.0) / math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+	tmp_norm := 1.0 / math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
 	return Vec{ v.x * tmp_norm , v.y * tmp_norm, v.z * tmp_norm }
 }
 
@@ -91,17 +91,18 @@ struct Image {
 }
 
 fn new_image(w int, h int) Image {
+	vecsize := int(sizeof(Vec))
 	return Image{
 		width: w,
 		height: h,
-		data: &Vec(vcalloc(sizeof(Vec)*w*h))
+		data: &Vec(vcalloc(vecsize*w*h))
 	}
 }
 
 // write out a .ppm file
 fn (image Image) save_as_ppm(file_name string) {
 	npixels := image.width * image.height
-	mut f_out := os.create(file_name) or { exit }
+	mut f_out := os.create(file_name) or { panic(err) }
 	f_out.writeln('P3')
 	f_out.writeln('${image.width} ${image.height}')
 	f_out.writeln('255')
@@ -122,18 +123,18 @@ struct Ray {
 
 // material types, used in radiance()
 enum Refl_t {
-	diff,
-	spec,
+	diff
+	spec
 	refr
 }
 
 /********************************* Sphere ************************************/
 struct Sphere {
-	rad f64 = f64(0.0)   // radius
-	p Vec                // position
-	e Vec                // emission
-	c Vec                // color
-	refl Refl_t          // reflection type => [diffuse, specular, refractive]
+	rad f64 = 0.0  // radius
+	p Vec          // position
+	e Vec          // emission
+	c Vec          // color
+	refl Refl_t    // reflection type => [diffuse, specular, refractive]
 }
 
 fn (sp Sphere) intersect (r Ray) f64 {
@@ -142,7 +143,7 @@ fn (sp Sphere) intersect (r Ray) f64 {
 	mut det   := b * b - op.dot(op) + sp.rad * sp.rad
 
 	if det < 0 {
-		return f64(0)
+		return 0
 	}
 
 	det = math.sqrt(det)
@@ -156,7 +157,7 @@ fn (sp Sphere) intersect (r Ray) f64 {
 	if t > eps {
 		return t
 	}
-	return f64(0)
+	return 0
 }
 
 /*********************************** Scenes **********************************
@@ -166,7 +167,7 @@ fn (sp Sphere) intersect (r Ray) f64 {
 * The sphere fileds are: Sphere{radius, position, emission, color, material}
 ******************************************************************************/
 const (
-Cen = Vec{50, 40.8, -860} // used by scene 1
+cen = Vec{50, 40.8, -860} // used by scene 1
 spheres = [
 [// scene 0 cornnel box
 	Sphere{rad: 1e+5, p: Vec{ 1e+5 +1,40.8,81.6} , e: Vec{}        , c: Vec{.75,.25,.25}        , refl: .diff},//Left
@@ -183,7 +184,7 @@ spheres = [
 [// scene 1 sunset
 	Sphere{rad: 1600,  p: Vec{1.0,0.0,2.0}.mult_s(3000), e: Vec{1.0,.9,.8}.mult_s(1.2e+1*1.56*2)    , c: Vec{}                     ,  refl: .diff}, // sun
 	Sphere{rad: 1560,  p: Vec{1,0,2}.mult_s(3500)      , e: Vec{1.0,.5,.05}.mult_s(4.8e+1*1.56*2)   , c: Vec{}                     ,  refl: .diff}, // horizon sun2
-	Sphere{rad: 10000, p: Cen+Vec{0,0,-200}, e: Vec{0.00063842, 0.02001478, 0.28923243}.mult_s(6e-2*8), c: Vec{.7,.7,1}.mult_s(.25),  refl: .diff}, // sky
+	Sphere{rad: 10000, p: cen+Vec{0,0,-200}, e: Vec{0.00063842, 0.02001478, 0.28923243}.mult_s(6e-2*8), c: Vec{.7,.7,1}.mult_s(.25),  refl: .diff}, // sky
 
 	Sphere{rad: 100000, p: Vec{50, -100000, 0}     , e: Vec{}                    , c: Vec{.3,.3,.3}   , refl: .diff}, // grnd
 	Sphere{rad: 110000, p: Vec{50, -110048.5, 0}   , e: Vec{.9,.5,.05}.mult_s(4) , c: Vec{}, refl: .diff},// horizon brightener
@@ -215,12 +216,12 @@ fn clamp(x f64) f64 {
 
 [inline]
 fn to_int(x f64) int {
-	p := math.pow(clamp(x), f64(1.0/2.2))
-	return int(p*f64(255.0)+f64(0.5))
+	p := math.pow(clamp(x), 1.0/2.2)
+	return int(p*255.0+0.5)
 }
 
 fn intersect(r Ray, spheres &Sphere, nspheres int) (bool, f64, int){
-	mut d  := f64(0)
+	mut d  := 0.0
 	mut t  := inf
 	mut id := 0
 	for i:=nspheres-1; i >= 0; i-- {
@@ -235,10 +236,9 @@ fn intersect(r Ray, spheres &Sphere, nspheres int) (bool, f64, int){
 
 // some casual random function, try to avoid the 0
 fn rand_f64() f64 {
-	x := (C.rand()+1) & 0x3FFF_FFFF
+	x := rand.u32() & 0x3FFF_FFFF
 	return f64(x)/f64(0x3FFF_FFFF)
 }
-
 
 const(
 	cache_len = 65536           // the 2*pi angle will be splitted in 65536 part
@@ -247,13 +247,13 @@ const(
 
 struct Cache {
 mut:
-	sin_tab [cache_len]f64
-	cos_tab [cache_len]f64
+	sin_tab [65536]f64
+	cos_tab [65536]f64
 }
 
 fn new_tabs() Cache {
 	mut c := Cache{}
-	inv_len := f64(1.0) / f64(cache_len)
+	inv_len := 1.0 / f64(cache_len)
 	for i in 0..cache_len {
 		x := f64(i) * math.pi * 2.0 * inv_len
 		c.sin_tab[i] = math.sin(x)
@@ -269,14 +269,18 @@ const (
 
 /******************* main function for the radiance calculation **************/
 fn radiance(r Ray, depthi int, scene_id int) Vec {
+	if depthi > 1024 {
+		eprintln('depthi: $depthi')
+		return Vec{} 
+	}
 	sin_tab := &f64( tabs.sin_tab )
 	cos_tab := &f64( tabs.cos_tab )
 	mut depth   := depthi      // actual depth in the reflection tree
-	mut t       := f64(0)      // distance to intersection
+	mut t       := 0.0         // distance to intersection
 	mut id      := 0           // id of intersected object
 	mut res     := false       // result of intersect
 
-	v_1 := f64(1.0)
+	v_1 := 1.0
 	//v_2 := f64(2.0)
 
 	scene := spheres[scene_id]
@@ -317,7 +321,7 @@ fn radiance(r Ray, depthi int, scene_id int) Vec {
 		//r1  := f64(2.0 * math.pi) * rand_f64()
 
 		// tabbed speed-up
-		r1 := C.rand() & cache_mask
+		r1 := rand.u32() & cache_mask
 
 		r2  := rand_f64()
 		r2s := math.sqrt(r2)
@@ -393,9 +397,9 @@ fn ray_trace(w int, h int, samps int, file_name string, scene_id int) Image {
 	image := new_image(w, h)
 
 	// inverse costants
-	w1     := f64(1.0 / w)
-	h1     := f64(1.0 / h)
-	samps1 := f64(1.0 / samps)
+	w1     := f64(1.0 / f64(w))
+	h1     := f64(1.0 / f64(h))
+	samps1 := f64(1.0 / f64(samps))
 
 	cam   := Ray{Vec{50, 52, 295.6},  Vec{0, -0.042612, -1}.norm()} // cam position, direction
 	cx    := Vec{ f64(w) * 0.5135 / f64(h), 0, 0}
@@ -417,7 +421,7 @@ fn ray_trace(w int, h int, samps int, file_name string, scene_id int) Image {
 			for sy := 0; sy < 2; sy ++ {
 				for sx := 0; sx < 2; sx ++ {
 					r = Vec{0,0,0}
-					for s in 0..samps {
+					for _ in 0..samps {
 						r1 := v_2 * rand_f64()
 						dx := if r1 < v_1 { math.sqrt(r1) - v_1 } else { v_1 - math.sqrt(v_2 - r1) }
 
@@ -429,7 +433,7 @@ fn ray_trace(w int, h int, samps int, file_name string, scene_id int) Image {
                         r = r + radiance(Ray{cam.o+d.mult_s(140.0), d.norm()}, 0, scene_id).mult_s(samps1)
 					}
 					tmp_vec := Vec{clamp(r.x),clamp(r.y),clamp(r.z)}.mult_s(.25)
-					*ivec = *ivec + tmp_vec
+					(*ivec) = *ivec + tmp_vec
 				}
 			}
 		}
@@ -464,19 +468,19 @@ fn main() {
 		height = os.args[5].int()
 	}
 
-	// init the rand, using the same seed allows to obtain the same result in different runs
-	// change the seed from 2020 for different results
-	rand.seed(2020)
+	// change the seed for a different result
+	rand.seed([u32(2020), 0])
 
 	t1:=time.ticks()
 
 	image := ray_trace(width, height, samples, file_name, scene_id)
 	t2:=time.ticks()
 
-	eprintln('\nRendering finished. Took: ${t2-t1:5d}ms')
+
+	eprintln('\nRendering finished. Took: ${(t2-t1):5}ms')
 
 	image.save_as_ppm( file_name )
 	t3:=time.ticks()
 
-	eprintln('Image saved as [${file_name}]. Took: ${t3-t2:5d}ms')
+	eprintln('Image saved as [${file_name}]. Took: ${(t3-t2):5}ms')
 }

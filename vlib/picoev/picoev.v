@@ -19,11 +19,11 @@ import picohttpparser
 #include "src/picoev.h"
 
 const (
-	MAX_FDS = 1024
-	TIMEOUT_SECS = 8
-	MAX_TIMEOUT = 10
-	MAX_READ = 4096
-	MAX_WRITE = 8192
+	max_fds = 1024
+	timeout_secs = 8
+	max_timeout = 10
+	max_read = 4096
+	max_write = 8192
 )
 
 struct C.in_addr {
@@ -40,6 +40,8 @@ mut:
 
 struct C.sockaddr_storage {}
 
+fn C.atoi() int
+fn C.strncasecmp() int
 fn C.socket() int
 fn C.setsockopt() int
 fn C.htonl() int
@@ -51,20 +53,20 @@ fn C.getaddrinfo() int
 fn C.connect() int
 fn C.send() int
 fn C.recv() int
-fn C.read() int
+//fn C.read() int
 fn C.shutdown() int
-fn C.close() int
+//fn C.close() int
 fn C.ntohs() int
 fn C.getsockname() int
 
 fn C.fcntl() int
-fn C.write() int
+//fn C.write() int
 
 struct C.picoev_loop {}
 
 struct Picoev {
-	loop *C.picoev_loop
-	cb   fn(req picohttpparser.Request, res mut picohttpparser.Response)
+	loop &C.picoev_loop
+	cb   fn(req picohttpparser.Request, mut res picohttpparser.Response)
 mut:
 	date byteptr
 	buf  byteptr
@@ -73,14 +75,17 @@ mut:
 	oidx [1024]int
 }
 
-fn picoev_del(*C.picoev_loop, int) int
-fn picoev_set_timeout(*C.picoev_loop, int, int)
-fn picoev_add(*C.picoev_loop, int, int, int, *C.picoev_handler, voidptr) int
-fn picoev_init(int) int
-fn picoev_create_loop(int) *C.picoev_loop
-fn picoev_loop_once(*C.picoev_loop, int) int
-fn picoev_destroy_loop(*C.picoev_loop) int
-fn picoev_deinit() int
+fn C.picoev_del(&C.picoev_loop, int) int
+fn C.picoev_set_timeout(&C.picoev_loop, int, int)
+fn C.picoev_add(&C.picoev_loop, int, int, int, &C.picoev_handler, voidptr) int
+fn C.picoev_init(int) int
+fn C.picoev_create_loop(int) &C.picoev_loop
+fn C.picoev_loop_once(&C.picoev_loop, int) int
+fn C.picoev_destroy_loop(&C.picoev_loop) int
+fn C.picoev_deinit() int
+fn C.phr_parse_request() int
+fn C.phr_parse_request_path_pipeline() int
+fn C.phr_parse_request_path() int
 
 [inline]
 fn setup_sock(fd int) {
@@ -94,7 +99,7 @@ fn setup_sock(fd int) {
 }
 
 [inline]
-fn close_conn(loop *C.picoev_loop, fd int) {
+fn close_conn(loop &C.picoev_loop, fd int) {
 	C.picoev_del(loop, fd)
 	C.close(fd)
 }
@@ -109,25 +114,25 @@ fn mysubstr(s byteptr, from, len int) string {
 	return tos(s + from, len)
 }
 
-fn rw_callback(loop *C.picoev_loop, fd, events int, cb_arg voidptr) {
-	mut p := *Picoev(cb_arg)
+fn rw_callback(loop &C.picoev_loop, fd, events int, cb_arg voidptr) {
+	mut p := &Picoev(cb_arg)
 	if (events & C.PICOEV_TIMEOUT) != 0 {
 		close_conn(loop, fd)
 		p.idx[fd] = 0
 		return
 	}
 	else if (events & C.PICOEV_READ) != 0 {
-		C.picoev_set_timeout(loop, fd, TIMEOUT_SECS)
-		buf := (p.buf + fd * MAX_READ)
+		C.picoev_set_timeout(loop, fd, timeout_secs)
+		buf := (p.buf + fd * max_read)
 		idx := p.idx[fd]
-		mut r := myread(fd, buf, MAX_READ, idx)
-		if (r == 0) {
+		mut r := myread(fd, buf, max_read, idx)
+		if r == 0 {
 			close_conn(loop, fd)
 			p.idx[fd] = 0
 			return
-		} else if (r == -1) {
-			if errno == C.EAGAIN || errno == C.EWOULDBLOCK {
-				//
+		} else if r == -1 {
+			if false { //errno == C.EAGAIN || errno == C.EWOULDBLOCK {
+				// TODO
 			} else {
 				close_conn(loop, fd)
 				p.idx[fd] = 0
@@ -136,7 +141,7 @@ fn rw_callback(loop *C.picoev_loop, fd, events int, cb_arg voidptr) {
 		} else {
 			r += idx
 			mut s := tos(buf, r)
-			out := (p.out + fd * MAX_WRITE)
+			out := (p.out + fd * max_write)
 			mut res := picohttpparser.Response{
 				fd: fd
 				date: p.date
@@ -145,14 +150,28 @@ fn rw_callback(loop *C.picoev_loop, fd, events int, cb_arg voidptr) {
 			}
 			mut req := picohttpparser.Request{}
 			for {
-				pret := req.parse_request_path_pipeline(s)
+				pret := req.parse_request(s, 100)
 				if pret <= 0 && s.len > 0 {
 					C.memmove(buf, s.str, s.len)
 					p.idx[fd] = s.len
-					p.oidx[fd] = int(res.buf - res.buf_start)
+					p.oidx[fd] = int(res.buf) - int(res.buf_start)
 					break
 				}
-				p.cb(req, mut res)
+				if req.method.str[0]==`p` || req.method.str[0]==`P` || req.method.str[0]==`d` || req.method.str[0]==`D`  {
+				  mut j := 0
+					for {
+						if j == req.num_headers {
+							break
+						}
+						if req.headers[j].name_len == 14 && C.strncasecmp(req.headers[j].name, "content-length", 14) == 0 {
+							//cont_length := C.atoi(tos(req.headers[j].value, req.headers[j].value_len).str)
+							//println('$cont_length')
+							//TODO need to maintain state of incomplete request to collect body later
+						}
+						j = j+1
+					}
+				}
+				p.cb(req, mut &res)
 				if pret >= s.len {
 					p.idx[fd] = 0
 					p.oidx[fd] = 0
@@ -168,11 +187,11 @@ fn rw_callback(loop *C.picoev_loop, fd, events int, cb_arg voidptr) {
 	}
 }
 
-fn accept_callback(loop *C.picoev_loop, fd, events int, cb_arg voidptr) {
+fn accept_callback(loop &C.picoev_loop, fd, events int, cb_arg voidptr) {
 	newfd := C.accept(fd, 0, 0)
 	if newfd != -1 {
 		setup_sock(newfd)
-		C.picoev_add(loop, newfd, C.PICOEV_READ, TIMEOUT_SECS, rw_callback, cb_arg)
+		C.picoev_add(loop, newfd, C.PICOEV_READ, timeout_secs, rw_callback, cb_arg)
 	}
 }
 
@@ -204,18 +223,18 @@ pub fn new(port int, cb voidptr) &Picoev {
 
 	setup_sock(fd)
 
-	C.picoev_init(MAX_FDS)
-	loop := C.picoev_create_loop(MAX_TIMEOUT)
+	C.picoev_init(max_fds)
+	loop := C.picoev_create_loop(max_timeout)
 	pv := &Picoev{
 		loop: loop
 		cb: cb
 		date: C.get_date()
-		buf: malloc(MAX_FDS * MAX_READ + 1)
-		out: malloc(MAX_FDS * MAX_WRITE + 1)
+		buf: malloc(max_fds * max_read + 1)
+		out: malloc(max_fds * max_write + 1)
 	}
 	C.picoev_add(loop, fd, C.PICOEV_READ, 0, accept_callback, pv)
 
-	go update_date(pv)
+	go update_date(mut pv)
 
 	return pv
 }
@@ -226,7 +245,7 @@ pub fn (p Picoev) serve() {
 	}
 }
 
-fn update_date(p mut Picoev) {
+fn update_date(mut p Picoev) {
 	for {
 		p.date = C.get_date()
 		C.usleep(1000000)

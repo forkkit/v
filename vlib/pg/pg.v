@@ -3,6 +3,8 @@ module pg
 #flag -lpq
 #flag linux -I/usr/include/postgresql
 #flag darwin -I/opt/local/include/postgresql11
+#flag windows -I @VROOT/thirdparty/pg/include
+#flag windows -L @VROOT/thirdparty/pg/win64
 #include <libpq-fe.h>
 
 pub struct DB {
@@ -20,6 +22,7 @@ struct C.PGResult { }
 pub struct Config {
 pub:
 	host string
+	port int = 5432
 	user string
 	password string
 	dbname string
@@ -34,8 +37,8 @@ fn C.PQnfields(voidptr) int
 fn C.PQexec(voidptr) voidptr
 fn C.PQexecParams(voidptr) voidptr
 
-pub fn connect(config pg.Config) ?DB {
-	conninfo := 'host=$config.host user=$config.user dbname=$config.dbname password=$config.password'
+pub fn connect(config Config) ?DB {
+	conninfo := 'host=$config.host port=$config.port user=$config.user dbname=$config.dbname password=$config.password'
 	conn := C.PQconnectdb(conninfo.str)
 	status := C.PQstatus(conn)
 	println("status=$status")
@@ -46,10 +49,10 @@ pub fn connect(config pg.Config) ?DB {
 	return DB {conn: conn}
 }
 
-fn res_to_rows(res voidptr) []pg.Row {
+fn res_to_rows(res voidptr) []Row {
 	nr_rows := C.PQntuples(res)
 	nr_cols := C.PQnfields(res)
-	mut rows := []pg.Row
+	mut rows := []Row{}
 	for i in 0..nr_rows {
 		mut row := Row{}
 		for j in 0..nr_cols {
@@ -89,11 +92,11 @@ pub fn (db DB) q_string(query string) string {
 	return val
 }
 
-pub fn (db DB) q_strings(query string) []pg.Row {
+pub fn (db DB) q_strings(query string) []Row {
 	return db.exec(query)
 }
 
-pub fn (db DB) exec(query string) []pg.Row {
+pub fn (db DB) exec(query string) []Row {
 	res := C.PQexec(db.conn, query.str)
 	e := string(C.PQerrorMessage(db.conn))
 	if e != '' {
@@ -104,28 +107,28 @@ pub fn (db DB) exec(query string) []pg.Row {
 	return res_to_rows(res)
 }
 
-fn rows_first_or_empty(rows []pg.Row) ?pg.Row {
+fn rows_first_or_empty(rows []Row) ?Row {
 	if rows.len == 0 {
 		return error('no row')
 	}
 	return rows[0]
 }
 
-pub fn (db DB) exec_one(query string) ?pg.Row {
+pub fn (db DB) exec_one(query string) ?Row {
 	res := C.PQexec(db.conn, query.str)
 	e := string(C.PQerrorMessage(db.conn))
 	if e != '' {
 		return error('pg exec error: "$e"')
 	}
-	row := rows_first_or_empty( res_to_rows(res) )
+	row := rows_first_or_empty( res_to_rows(res) ) or { return error(err) }
 	return row
 }
 
 // The entire function can be considered unsafe because of the malloc and the
 // free. This prevents warnings and doesn't seem to affect behavior.
-pub fn (db DB) exec_param_many(query string, params []string) []pg.Row {
+pub fn (db DB) exec_param_many(query string, params []string) []Row {
 	unsafe {
-		mut param_vals := &byteptr( malloc( params.len * sizeof(byteptr) ) )
+		mut param_vals := &byteptr(malloc(params.len * 8))
 		for i in 0..params.len {
 			param_vals[i] = params[i].str
 		}
@@ -135,7 +138,7 @@ pub fn (db DB) exec_param_many(query string, params []string) []pg.Row {
 	}
 }
 
-pub fn (db DB) exec_param2(query string, param, param2 string) []pg.Row {
+pub fn (db DB) exec_param2(query string, param, param2 string) []Row {
 	mut param_vals := [2]byteptr
 	param_vals[0] = param.str
 	param_vals[1] = param2.str
@@ -143,14 +146,14 @@ pub fn (db DB) exec_param2(query string, param, param2 string) []pg.Row {
 	return db.handle_error_or_result(res, 'exec_param2')
 }
 
-pub fn (db DB) exec_param(query string, param string) []pg.Row {
+pub fn (db DB) exec_param(query string, param string) []Row {
 	mut param_vals := [1]byteptr
 	param_vals[0] = param.str
 	res := C.PQexecParams(db.conn, query.str, 1, 0, param_vals, 0, 0, 0)
 	return db.handle_error_or_result(res, 'exec_param')
 }
 
-fn (db DB) handle_error_or_result(res voidptr, elabel string) []pg.Row {
+fn (db DB) handle_error_or_result(res voidptr, elabel string) []Row {
 	e := string(C.PQerrorMessage(db.conn))
 	if e != '' {
 		println('pg $elabel error:')

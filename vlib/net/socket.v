@@ -6,13 +6,18 @@ pub struct Socket {
 pub:
 	sockfd int
 	family int
-	_type  int
+	typ    int
 	proto  int
+pub mut:
+	max_single_send_size int = 64000
 }
 
 struct C.in_addr {
 mut:
 	s_addr int
+}
+
+struct C.sockaddr {
 }
 
 struct C.sockaddr_in {
@@ -39,64 +44,46 @@ struct C.sockaddr_storage {
 
 fn C.socket() int
 
-
 fn C.setsockopt() int
-
 
 fn C.htonl() int
 
-
 fn C.htons() int
-
 
 fn C.bind() int
 
-
 fn C.listen() int
-
 
 fn C.accept() int
 
-
 fn C.getaddrinfo() int
-
 
 fn C.connect() int
 
-
 fn C.send() int
-
 
 fn C.recv() int
 
-
-fn C.read() int
-
-
 fn C.shutdown() int
-
-
-fn C.close() int
-
 
 fn C.ntohs() int
 
-
 fn C.getsockname() int
+
 // create socket
-pub fn new_socket(family int, _type int, proto int) ?Socket {
-	sockfd := C.socket(family, _type, proto)
+pub fn new_socket(family, typ, proto int) ?Socket {
+	sockfd := C.socket(family, typ, proto)
 	one := 1
 	// This is needed so that there are no problems with reusing the
 	// same port after the application exits.
 	C.setsockopt(sockfd, C.SOL_SOCKET, C.SO_REUSEADDR, &one, sizeof(int))
-	if sockfd == 0 {
+	if sockfd == -1 {
 		return error('net.socket: failed')
 	}
 	s := Socket{
 		sockfd: sockfd
 		family: family
-		_type: _type
+		typ: typ
 		proto: proto
 	}
 	return s
@@ -107,7 +94,7 @@ pub fn socket_udp() ?Socket {
 }
 
 // set socket options
-pub fn (s Socket) setsockopt(level int, optname int, optvalue &int) ?int {
+pub fn (s Socket) setsockopt(level, optname int, optvalue &int) ?int {
 	res := C.setsockopt(s.sockfd, level, optname, optvalue, sizeof(&int))
 	if res < 0 {
 		return error('net.setsocketopt: failed with $res')
@@ -117,13 +104,14 @@ pub fn (s Socket) setsockopt(level int, optname int, optvalue &int) ?int {
 
 // bind socket to port
 pub fn (s Socket) bind(port int) ?int {
-	mut addr := C.sockaddr_in{
-	}
+	mut addr := C.sockaddr_in{}
 	addr.sin_family = s.family
 	addr.sin_port = C.htons(port)
 	addr.sin_addr.s_addr = C.htonl(C.INADDR_ANY)
 	size := 16 // sizeof(C.sockaddr_in)
-	res := C.bind(s.sockfd, &addr, size)
+	tmp := voidptr(&addr)
+	skaddr := &C.sockaddr(tmp)
+	res := C.bind(s.sockfd, skaddr, size)
 	if res < 0 {
 		return error('net.bind: failed with $res')
 	}
@@ -164,10 +152,10 @@ pub fn listen(port int) ?Socket {
 	s := new_socket(C.AF_INET, C.SOCK_STREAM, 0) or {
 		return error(err)
 	}
-	_ = s.bind(port) or {
+	s.bind(port) or {
 		return error(err)
 	}
-	_ = s.listen() or {
+	s.listen() or {
 		return error(err)
 	}
 	return s
@@ -178,17 +166,18 @@ pub fn (s Socket) accept() ?Socket {
 	$if debug {
 		println('accept()')
 	}
-	addr := C.sockaddr_storage{
-	}
+	addr := C.sockaddr_storage{}
 	size := 128 // sizeof(sockaddr_storage)
-	sockfd := C.accept(s.sockfd, &addr, &size)
+	tmp := voidptr(&addr)
+	skaddr := &C.sockaddr(tmp)
+	sockfd := C.accept(s.sockfd, skaddr, &size)
 	if sockfd < 0 {
 		return error('net.accept: failed with $sockfd')
 	}
 	c := Socket{
 		sockfd: sockfd
 		family: s.family
-		_type: s._type
+		typ: s.typ
 		proto: s.proto
 	}
 	return c
@@ -196,10 +185,9 @@ pub fn (s Socket) accept() ?Socket {
 
 // connect to given addrress and port
 pub fn (s Socket) connect(address string, port int) ?int {
-	mut hints := C.addrinfo{
-	}
+	mut hints := C.addrinfo{}
 	hints.ai_family = s.family
-	hints.ai_socktype = s._type
+	hints.ai_socktype = s.typ
 	hints.ai_flags = C.AI_PASSIVE
 	hints.ai_protocol = s.proto
 	hints.ai_addrlen = 0
@@ -210,12 +198,12 @@ pub fn (s Socket) connect(address string, port int) ?int {
 	sport := '$port'
 	info_res := C.getaddrinfo(address.str, sport.str, &hints, &info)
 	if info_res != 0 {
-		error_message := os.get_error_msg(net.error_code())
+		error_message := os.get_error_msg(error_code())
 		return error('net.connect: getaddrinfo failed "$error_message"')
 	}
 	res := C.connect(s.sockfd, info.ai_addr, info.ai_addrlen)
 	if res < 0 {
-		error_message := os.get_error_msg(net.error_code())
+		error_message := os.get_error_msg(error_code())
 		return error('net.connect: connect failed "$error_message"')
 	}
 	return res
@@ -226,7 +214,7 @@ pub fn dial(address string, port int) ?Socket {
 	s := new_socket(C.AF_INET, C.SOCK_STREAM, 0) or {
 		return error(err)
 	}
-	_ = s.connect(address, port) or {
+	s.connect(address, port) or {
 		return error(err)
 	}
 	return s
@@ -237,7 +225,8 @@ pub fn (s Socket) send(buf byteptr, len int) ?int {
 	mut dptr := buf
 	mut dlen := len
 	for {
-		sbytes := C.send(s.sockfd, dptr, dlen, MSG_NOSIGNAL)
+		send_size := if dlen > s.max_single_send_size { s.max_single_send_size } else { dlen }
+		sbytes := C.send(s.sockfd, dptr, send_size, msg_nosignal)
 		if sbytes < 0 {
 			return error('net.send: failed with $sbytes')
 		}
@@ -256,11 +245,13 @@ pub fn (s Socket) send_string(sdata string) ?int {
 }
 
 // receive string data from socket. NB: you are responsible for freeing the returned byteptr
-pub fn (s Socket) recv(bufsize int) (byteptr,int) {
+pub fn (s Socket) recv(bufsize int) (byteptr, int) {
 	mut buf := byteptr(0)
-	unsafe { buf = malloc(bufsize) }
+	unsafe {
+		buf = malloc(bufsize)
+	}
 	res := C.recv(s.sockfd, buf, bufsize, 0)
-	return buf,res
+	return buf, res
 }
 
 // TODO: remove cread/2 and crecv/2 when the Go net interface is done
@@ -270,8 +261,8 @@ pub fn (s Socket) cread(buffer byteptr, buffersize int) int {
 
 // Receive a message from the socket, and place it in a preallocated buffer buf,
 // with maximum message size bufsize. Returns the length of the received message.
-pub fn (s Socket) crecv(buffer byteptr, buffersize int) int {
-	return C.recv(s.sockfd, buffer, buffersize, 0)
+pub fn (s Socket) crecv(buffer voidptr, buffersize int) int {
+	return C.recv(s.sockfd, byteptr(buffer), buffersize, 0)
 }
 
 // shutdown and close socket
@@ -300,14 +291,15 @@ pub fn (s Socket) close() ?int {
 }
 
 pub const (
-	CRLF = '\r\n'
-	MAX_READ = 400
-	MSG_PEEK = 0x02
+	crlf     = '\r\n'
+	max_read = 400
+	msg_peek = 0x02
 )
+
 // write - write a string with CRLF after it over the socket s
 pub fn (s Socket) write(str string) ?int {
-	line := '$str$CRLF'
-	res := C.send(s.sockfd, line.str, line.len, MSG_NOSIGNAL)
+	line := '$str$crlf'
+	res := C.send(s.sockfd, line.str, line.len, msg_nosignal)
 	if res < 0 {
 		return error('net.write: failed with $res')
 	}
@@ -316,11 +308,11 @@ pub fn (s Socket) write(str string) ?int {
 
 // read_line - retrieves a line from the socket s (i.e. a string ended with \n)
 pub fn (s Socket) read_line() string {
-	mut buf := [MAX_READ]byte // where C.recv will store the network data
+	mut buf := [max_read]byte // where C.recv will store the network data
 	mut res := '' // The final result, including the ending \n.
 	for {
 		mut line := '' // The current line. Can be a partial without \n in it.
-		n := C.recv(s.sockfd, buf, MAX_READ - 1, MSG_PEEK)
+		n := C.recv(s.sockfd, buf, max_read - 1, msg_peek)
 		if n == -1 {
 			return res
 		}
@@ -329,7 +321,7 @@ pub fn (s Socket) read_line() string {
 		}
 		buf[n] = `\0`
 		mut eol_idx := -1
-		for i in 0..n {
+		for i in 0 .. n {
 			if int(buf[i]) == `\n` {
 				eol_idx = i
 				// Ensure that tos_clone(buf) later,
@@ -339,7 +331,8 @@ pub fn (s Socket) read_line() string {
 				break
 			}
 		}
-		line = tos_clone(buf)
+		bufbp := byteptr(buf)
+		line = tos_clone(bufbp)
 		if eol_idx > 0 {
 			// At this point, we are sure that recv returned valid data,
 			// that contains *at least* one line.
@@ -353,7 +346,7 @@ pub fn (s Socket) read_line() string {
 		// recv returned a buffer without \n in it .
 		C.recv(s.sockfd, buf, n, 0)
 		res += line
-		res += CRLF
+		res += crlf
 		break
 	}
 	return res
@@ -361,26 +354,27 @@ pub fn (s Socket) read_line() string {
 
 // TODO
 pub fn (s Socket) read_all() string {
-	mut buf := [MAX_READ]byte // where C.recv will store the network data
+	mut buf := [max_read]byte // where C.recv will store the network data
 	mut res := '' // The final result, including the ending \n.
 	for {
-		n := C.recv(s.sockfd, buf, MAX_READ - 1, 0)
+		n := C.recv(s.sockfd, buf, max_read - 1, 0)
 		if n == -1 {
 			return res
 		}
 		if n == 0 {
 			return res
 		}
-		res += tos_clone(buf)
+		bufbp := byteptr(buf)
+		res += tos_clone(bufbp)
 	}
 	return res
 }
 
 pub fn (s Socket) get_port() int {
-	mut addr := C.sockaddr_in{
-	}
+	mut addr := C.sockaddr_in{}
 	size := 16 // sizeof(sockaddr_in)
-	C.getsockname(s.sockfd, &addr, &size)
+	tmp := voidptr(&addr)
+	skaddr := &C.sockaddr(tmp)
+	C.getsockname(s.sockfd, skaddr, &size)
 	return C.ntohs(addr.sin_port)
 }
-

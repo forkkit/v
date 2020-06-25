@@ -12,7 +12,7 @@ fn test_parse() {
 
 fn test_parse_invalid() {
 	s := 'Invalid time string'
-	t := time.parse(s) or {
+	time.parse(s) or {
 		assert true
 		return
 	}
@@ -38,9 +38,34 @@ fn test_parse_rfc2822() {
 
 fn test_parse_rfc2822_invalid() {
 	s3 := 'Thu 12 Foo 2019 06:07:45 +0800'
-	t3 := time.parse_rfc2822(s3) or {
+	time.parse_rfc2822(s3) or {
 		assert true
 		return
 	}
 	assert false
+}
+
+fn test_iso8601_parse_utc_diff() {
+	format_utc 	:= '2020-06-05T15:38:06.015959+00:00'
+	format_cest := '2020-06-05T15:38:06.015959+02:00'
+
+	t_utc 	:= time.parse_iso8601(format_utc) or {panic(err)}
+	t_cest 	:= time.parse_iso8601(format_cest) or {panic(err)}
+
+	assert t_utc.year  == 2020
+	assert t_cest.year == 2020
+	assert t_utc.month == 6
+	assert t_cest.month == 6
+	assert t_utc.day == 5
+	assert t_cest.day == 5
+	// if it was formatted in utc it should be
+	// two hours before if it was formatted in
+	// cest time
+	assert t_utc.hour == (t_cest.hour + 2)
+	assert t_utc.minute == 38
+	assert t_cest.minute == 38
+	assert t_utc.second == 6
+	assert t_cest.second == 6
+	assert t_utc.microsecond == 15959
+	assert t_cest.microsecond == 15959
 }
